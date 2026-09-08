@@ -84,10 +84,10 @@ assert.match(xss, /&lt;img src=x/);
 // ── Trash button: geometry + behavior (ASCII-drawn, no emoji) ──────────────
 const rawSource = await readFile(new URL("../js/advanced_lora_loader_ui.js", import.meta.url), "utf8");
 
-// The trash button cell lives right after the (shifted-left) info cell.
-assert.match(rawSource, /iX: 962 \* s, iW: 14 \* s/, "info button must shift left to x=962");
-assert.match(rawSource, /tX: 976 \* s, tW: 14 \* s/, "trash button must sit at the old info x=976");
-assert.doesNotMatch(rawSource, /iX: 976/, "the info cell must no longer occupy x=976");
+// The trash button cell lives right after the info cell (iX 952 w18 → tX 974 w18).
+assert.match(rawSource, /iX: 952 \* s, iW: 18 \* s/, "info button cell lives at x=952");
+assert.match(rawSource, /tX: 974 \* s, tW: 18 \* s/, "trash button sits at x=974");
+assert.doesNotMatch(rawSource, /iX: 974/, "the info cell must not occupy the trash cell x");
 
 // Behavior: a trash click resets the slot back to "None" (like selecting None).
 assert.match(rawSource, /if \(x > C\.tX && x < C\.tX \+ C\.tW && data\[i\]\.lora !== "None"\)/, "trash hit-test must guard against empty slots");

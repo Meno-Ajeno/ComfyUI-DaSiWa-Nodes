@@ -254,7 +254,22 @@ const escHtml = v => String(v ?? "").replace(/[&<>"']/g, c => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
 
-function buildLoraInfoPanelHtml(info, theme) {
+// Civitai domain preference (.com / .red), persisted in localStorage so it
+// survives node-graph reloads and applies to every node instance.
+const CIVITAI_DOMAIN_KEY = "dasiwa_civitai_domain";
+function getCivitaiDomain() {
+  try {
+    const v = localStorage.getItem(CIVITAI_DOMAIN_KEY);
+    if (v === "com" || v === "red") return v;
+  } catch (_) { /* localStorage unavailable — fall through */ }
+  return "com";
+}
+function setCivitaiDomain(d) {
+  try { localStorage.setItem(CIVITAI_DOMAIN_KEY, d); } catch (_) {}
+  return d;
+}
+
+function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
   const t = theme || THEMES.a;
   const esc = escHtml;
   const words = (info.trainedWords || []).filter(w => w && w.word);
@@ -264,9 +279,21 @@ function buildLoraInfoPanelHtml(info, theme) {
     ";padding:2px 8px;border-radius:3px;cursor:pointer;font:11px 'Courier New',monospace;";
 
   const out = [];
+  // Top row: file name + domain selector (.com/.red) + actions.
+  // The selector lives inside the panel (no top-row chip on the node) and is
+  // persisted via localStorage so it sticks across nodes and reloads.
+  const domBtn = d =>
+    '<button data-action="domain" data-domain="' + d + '" title="Show .com/.red links" ' +
+    'style="' + btnStyle + ';padding:2px 7px;' +
+    (civitaiDomain === d ? "font-weight:bold;background:rgba(255,255,255,.18);" : "") +
+    '">' + "." + d + "</button>";
   out.push(
     '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
       '<span style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) + "</span>" +
+      '<span style="margin-left:auto;display:flex;gap:3px;align-items:center;">' +
+        '<span title="Civitai domain — both mirrors are searched, this picks the link shown first" style="font:9px \'Courier New\',monospace;opacity:.55;">civitai</span>' +
+        domBtn("com") + domBtn("red") +
+      "</span>" +
       '<button data-action="refresh" title="Re-fetch from Civitai" style="' + btnStyle + '">Refresh</button>' +
       (words.length ? '<button data-action="copy-words" style="' + btnStyle + '">Copy all</button>' : "") +
       (words.length ? '<button data-action="copy-selected" style="' + btnStyle + '">Copy selected</button>' : "") +
@@ -277,14 +304,21 @@ function buildLoraInfoPanelHtml(info, theme) {
     out.push('<div style="font:9px \'Courier New\',monospace;opacity:.5;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</div>");
   }
   if (info.civitaiFound) {
-    const link = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.com")) || "";
+    // The backend returns both mirror links (.com + .red, same modelId/versionId
+    // on each). Show them both; the domain selector picks the order.
+    const comLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.com")) || "";
+    const redLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.red")) || "";
+    const [first, second] = civitaiDomain === "red" ? [redLink, comLink] : [comLink, redLink];
+    const linkRow = (url) => url
+      ? '<a href="' + esc(url) + '" target="_blank" rel="noreferrer" style="color:' + t.btnText + ';display:block;overflow-wrap:anywhere;">' + esc(url) + "</a>"
+      : "";
     out.push(
       '<div style="margin-top:6px;font:12px \'Courier New\',monospace;">' +
         '<div style="font-weight:bold;">' + esc(info.name || info.file) + "</div>" +
         (info.type || info.baseModel
           ? '<div style="opacity:.6;">' + esc([info.type, info.baseModel].filter(Boolean).join(" · ")) + "</div>"
           : "") +
-        (link ? '<a href="' + esc(link) + '" target="_blank" rel="noreferrer" style="color:' + t.btnText + ';">' + esc(link) + "</a>" : "") +
+        (first || second ? '<div style="margin-top:4px;">' + linkRow(first) + linkRow(second) + "</div>" : "") +
       "</div>"
     );
   } else {
@@ -341,9 +375,12 @@ function copyInfoWords(items) {
   if (text && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
 }
 
-function openLoraInfo(lora, theme) {
+function openLoraInfo(lora, theme, onDomainChange) {
   closeInfoPanel();
   const t = theme || THEMES.a;
+  // Which mirror's link leads in the panel; persisted in localStorage and
+  // mirrored into the node's saved property via onDomainChange (optional).
+  let domain = getCivitaiDomain();
   const panel = document.createElement("div");
   panel.style.cssText = [
     "position:fixed", "inset:0", "z-index:10004",
@@ -370,9 +407,20 @@ function openLoraInfo(lora, theme) {
   panel.addEventListener("mousedown", ev => { if (ev.target === panel) close(); });
 
   const paint = info => {
-    box.innerHTML = buildLoraInfoPanelHtml(info, t);
+    box.innerHTML = buildLoraInfoPanelHtml(info, t, domain);
     box.querySelector('[data-action="close"]')?.addEventListener("click", close);
     box.querySelector('[data-action="refresh"]')?.addEventListener("click", () => load(true));
+    // Domain selector: pick which mirror's link leads, persist to localStorage
+    // (sticks across nodes and reloads), re-paint with the new order.
+    box.querySelectorAll('[data-action="domain"]').forEach(b => {
+      b.addEventListener("click", () => {
+        if (domain === b.dataset.domain) return;
+        domain = b.dataset.domain;
+        setCivitaiDomain(domain);
+        if (onDomainChange) onDomainChange(domain);
+        paint(info);
+      });
+    });
     const wordBtns = [...box.querySelectorAll("[data-word]")];
     const copyAll = box.querySelector('[data-action="copy-words"]');
     const copySel = box.querySelector('[data-action="copy-selected"]');
@@ -424,6 +472,7 @@ const CONTROL_DESCRIPTIONS = {
   toggleAll: "Enable every slot, or disable every slot when they are already enabled.",
   add: "Add one LoRA slot to the stack.",
   remove: "Remove the last LoRA slot from the stack.",
+  clear: "Reset every current slot to None with STR/VIS/A at 1.00, without changing how many slots are showing.",
   enabled: "Enable or disable this LoRA slot.",
   lora: "Choose the LoRA file for this slot.",
   str: "Master LoRA strength. This is multiplied by VIS and, for LTX-2.3, A. Range: -5.0 to 5.0.",
@@ -509,6 +558,7 @@ app.registerExtension({
         );
       }
       if (!this.properties.theme) this.properties.theme = "a";
+      if (!["com", "red"].includes(this.properties.civitai_domain)) this.properties.civitai_domain = getCivitaiDomain();
       if (this.properties.use_cache === undefined) this.properties.use_cache = false;   // default off
       if (!MODEL_TYPES.includes(this.properties.model_type)) this.properties.model_type = "Basic";
       const rows = JSON.parse(this.properties.stack_data);
@@ -586,6 +636,8 @@ app.registerExtension({
         if (x > btnX && x < btnX + btnW) return CONTROL_DESCRIPTIONS.theme;
         if (x > plusX && x < plusX + BTN_H) return CONTROL_DESCRIPTIONS.add;
         if (data.length > 1 && x > minusX && x < minusX + BTN_H) return CONTROL_DESCRIPTIONS.remove;
+        const clearX = (data.length > 1 ? minusX + BTN_H : plusX + BTN_H) + 4;
+        if (x > clearX && x < clearX + 36) return CONTROL_DESCRIPTIONS.clear;
       }
 
       const C = {
@@ -744,6 +796,22 @@ app.registerExtension({
         ctx.fillText("−", minusX + BTN_H / 2, BTN_Y + 11);
         ctx.textAlign = "left";
       }
+
+      // Clear button -- resets every current row to None / 1.00, keeps row count
+      const clearW = 36;
+      const clearX = (data.length > 1 ? plusX + BTN_H + 2 + BTN_H : plusX + BTN_H) + 4;
+      ctx.fillStyle = "#f4433622";
+      ctx.beginPath();
+      ctx.roundRect(clearX, BTN_Y, clearW, BTN_H, 3);
+      ctx.fill();
+      ctx.strokeStyle = "#f44336aa";
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      ctx.fillStyle = "#ffb3adcc";
+      ctx.font = "bold 8px 'Courier New',monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("Clear", clearX + clearW / 2, BTN_Y + 11);
+      ctx.textAlign = "left";
 
       // Divider
       ctx.strokeStyle = t.divider;
@@ -939,6 +1007,18 @@ app.registerExtension({
         return true;
       }
 
+      // Clear all rows: keeps however many slots are currently showing, resets
+      // each one back to None / 1.00 (the same shape a freshly-added row gets).
+      const clearW = 36;
+      const clearX = (data.length > 1 ? minusX + BTN_H : plusX + BTN_H) + 4;
+      if (y > BTN_Y && y < BTN_Y + BTN_H && x > clearX && x < clearX + clearW) {
+        const cleared = data.map(() => ({ on: true, lora: "None", str: 1.0, vs: 1.0, as: 1.0 }));
+        this.properties.stack_data = JSON.stringify(cleared);
+        sync(this);
+        this.setDirtyCanvas(true);
+        return true;
+      }
+
       const C = {
         onX: 8 * s, onW: 50 * s,
           nmX: 62 * s, nmW: 480 * s,
@@ -955,7 +1035,9 @@ app.registerExtension({
 
         // Info glyph (row right edge)
         if (x > C.iX && x < C.iX + C.iW && data[i].lora !== "None") {
-          openLoraInfo(data[i].lora, t);
+          openLoraInfo(data[i].lora, t, d => {
+            this.properties.civitai_domain = d;  // mirror the panel choice onto the node
+          });
           return true;
         }
 
