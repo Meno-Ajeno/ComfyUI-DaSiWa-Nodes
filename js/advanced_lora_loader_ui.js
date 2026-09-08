@@ -282,11 +282,13 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
   // Top row: file name + domain selector (.com/.red) + actions.
   // The selector lives inside the panel (no top-row chip on the node) and is
   // persisted via localStorage so it sticks across nodes and reloads.
-  const domBtn = d =>
-    '<button data-action="domain" data-domain="' + d + '" title="Show .com/.red links" ' +
-    'style="' + btnStyle + ';padding:2px 7px;' +
+  const domBtn = d => {
+    const color = d === "com" ? "#58a6ff" : "#ff6b6b";
+    return '<button data-action="domain" data-domain="' + d + '" title="Show .com/.red links" ' +
+    'style="' + btnStyle + ';padding:2px 7px;color:' + color + ';border-color:' + color + '88;' +
     (civitaiDomain === d ? "font-weight:bold;background:rgba(255,255,255,.18);" : "") +
     '">' + "." + d + "</button>";
+  };
   out.push(
     '<div style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) +
     (info.sha256 ? '<span style="float:right;opacity:.6;font-size:9px;user-select:all;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</span>" : "") +
