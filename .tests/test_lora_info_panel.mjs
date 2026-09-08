@@ -28,7 +28,10 @@ const info = {
     baseModel: "SDXL",
     imageLocal: "/dasiwa/ltx2/loraimg?lora=sub/cool_lora.safetensors",
     civitaiFound: true,
-    links: ["https://civitai.com/models/123?modelVersionId=456"],
+    links: [
+        "https://civitai.com/models/123?modelVersionId=456",
+        "https://civitai.red/models/123?modelVersionId=456",
+    ],
     trainedWords: [
         { word: "sks", count: 12, civitai: true },
         { word: "myword", count: 3 },
@@ -54,6 +57,12 @@ assert.match(html, /data-action="copy-words"/);
 assert.match(html, /data-action="copy-selected"/);
 assert.match(html, /seed 7/);
 assert.match(html, /abababab/);
+// Dual-link display: color-coded links with BLUE:/RED: prefix inside the anchor,
+// no domain selector buttons.
+assert.match(html, /<a href="https:\/\/civitai\.com\/models\/123\?modelVersionId=456"[^>]*color:#58a6ff[^>]*>BLUE: /);
+assert.match(html, /<a href="https:\/\/civitai\.red\/models\/123\?modelVersionId=456"[^>]*color:#ff6b6b[^>]*>RED: /);
+assert.doesNotMatch(html, /data-domain="com"/);
+assert.doesNotMatch(html, /data-domain="red"/);
 
 // civitai-missing state: error text, no model link, no word buttons
 const missing = buildLoraInfoPanelHtml(

@@ -254,22 +254,7 @@ const escHtml = v => String(v ?? "").replace(/[&<>"']/g, c => (
   { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
 ));
 
-// Civitai domain preference (.com / .red), persisted in localStorage so it
-// survives node-graph reloads and applies to every node instance.
-const CIVITAI_DOMAIN_KEY = "dasiwa_civitai_domain";
-function getCivitaiDomain() {
-  try {
-    const v = localStorage.getItem(CIVITAI_DOMAIN_KEY);
-    if (v === "com" || v === "red") return v;
-  } catch (_) { /* localStorage unavailable — fall through */ }
-  return "com";
-}
-function setCivitaiDomain(d) {
-  try { localStorage.setItem(CIVITAI_DOMAIN_KEY, d); } catch (_) {}
-  return d;
-}
-
-function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
+function buildLoraInfoPanelHtml(info, theme) {
   const t = theme || THEMES.a;
   const esc = escHtml;
   const words = (info.trainedWords || []).filter(w => w && w.word);
@@ -279,16 +264,7 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
     ";padding:2px 8px;border-radius:3px;cursor:pointer;font:11px 'Courier New',monospace;";
 
   const out = [];
-  // Top row: file name + domain selector (.com/.red) + actions.
-  // The selector lives inside the panel (no top-row chip on the node) and is
-  // persisted via localStorage so it sticks across nodes and reloads.
-  const domBtn = d => {
-    const color = d === "com" ? "#58a6ff" : "#ff6b6b";
-    return '<button data-action="domain" data-domain="' + d + '" title="Show .com/.red links" ' +
-    'style="' + btnStyle + ';padding:2px 7px;color:' + color + ';border-color:' + color + '88;' +
-    (civitaiDomain === d ? "font-weight:bold;background:rgba(255,255,255,.18);" : "") +
-    '">' + "." + d + "</button>";
-  };
+  // File name row (wraps independently) with the sha hint on its own row below.
   out.push(
     '<div style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) +
     "</div>" +
@@ -296,14 +272,9 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
       ? '<div style="font:9px \'Courier New\',monospace;opacity:.5;user-select:all;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</div>"
       : "")
   );
-  // Controls row: domain selector (.com/.red) + actions. The file name lives on
-  // its own row above so long folder paths can't stretch or wrap the buttons.
+  // Controls row: actions only.
   out.push(
     '<div style="display:flex;gap:6px;align-items:center;margin-top:4px;">' +
-      '<span style="margin-left:auto;display:flex;gap:3px;align-items:center;">' +
-        '<span title="Civitai domain — both mirrors are searched, this picks the link shown first" style="font:9px \'Courier New\',monospace;opacity:.55;">civitai</span>' +
-        domBtn("com") + domBtn("red") +
-      "</span>" +
       '<button data-action="refresh" title="Re-fetch from Civitai" style="' + btnStyle + '">Refresh</button>' +
       (words.length ? '<button data-action="copy-words" style="' + btnStyle + '">Copy all</button>' : "") +
       (words.length ? '<button data-action="copy-selected" style="' + btnStyle + '">Copy selected</button>' : "") +
@@ -312,20 +283,20 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
   );
   if (info.civitaiFound) {
     // The backend returns both mirror links (.com + .red, same modelId/versionId
-    // on each). Show them both; the domain selector picks the order.
+    // on each). Both are always shown, color-coded: BLUE: for .com, RED: for .red.
     const comLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.com")) || "";
     const redLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.red")) || "";
-    const [first, second] = civitaiDomain === "red" ? [redLink, comLink] : [comLink, redLink];
-    const linkRow = (url) => url
-      ? '<a href="' + esc(url) + '" target="_blank" rel="noreferrer" style="color:' + t.btnText + ';display:block;overflow-wrap:anywhere;">' + esc(url) + "</a>"
+    const linkRow = (label, color, url) => url
+      ? '<a href="' + esc(url) + '" target="_blank" rel="noreferrer" style="display:block;overflow-wrap:anywhere;color:' + color + ';">' + label + ' ' + esc(url) + "</a>"
       : "";
+    const linksHtml = linkRow("BLUE:", "#58a6ff", comLink) + linkRow("RED:", "#ff6b6b", redLink);
     out.push(
       '<div style="margin-top:6px;font:12px \'Courier New\',monospace;">' +
         '<div style="font-weight:bold;">' + esc(info.name || info.file) + "</div>" +
         (info.type || info.baseModel
           ? '<div style="opacity:.6;">' + esc([info.type, info.baseModel].filter(Boolean).join(" · ")) + "</div>"
           : "") +
-        (first || second ? '<div style="margin-top:4px;">' + linkRow(first) + linkRow(second) + "</div>" : "") +
+        (linksHtml ? '<div style="margin-top:4px;">' + linksHtml + "</div>" : "") +
       "</div>"
     );
   } else {
@@ -382,12 +353,9 @@ function copyInfoWords(items) {
   if (text && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
 }
 
-function openLoraInfo(lora, theme, onDomainChange) {
+function openLoraInfo(lora, theme) {
   closeInfoPanel();
   const t = theme || THEMES.a;
-  // Which mirror's link leads in the panel; persisted in localStorage and
-  // mirrored into the node's saved property via onDomainChange (optional).
-  let domain = getCivitaiDomain();
   const panel = document.createElement("div");
   panel.style.cssText = [
     "position:fixed", "inset:0", "z-index:10004",
@@ -414,20 +382,9 @@ function openLoraInfo(lora, theme, onDomainChange) {
   panel.addEventListener("mousedown", ev => { if (ev.target === panel) close(); });
 
   const paint = info => {
-    box.innerHTML = buildLoraInfoPanelHtml(info, t, domain);
+    box.innerHTML = buildLoraInfoPanelHtml(info, t);
     box.querySelector('[data-action="close"]')?.addEventListener("click", close);
     box.querySelector('[data-action="refresh"]')?.addEventListener("click", () => load(true));
-    // Domain selector: pick which mirror's link leads, persist to localStorage
-    // (sticks across nodes and reloads), re-paint with the new order.
-    box.querySelectorAll('[data-action="domain"]').forEach(b => {
-      b.addEventListener("click", () => {
-        if (domain === b.dataset.domain) return;
-        domain = b.dataset.domain;
-        setCivitaiDomain(domain);
-        if (onDomainChange) onDomainChange(domain);
-        paint(info);
-      });
-    });
     const wordBtns = [...box.querySelectorAll("[data-word]")];
     const copyAll = box.querySelector('[data-action="copy-words"]');
     const copySel = box.querySelector('[data-action="copy-selected"]');
@@ -565,7 +522,6 @@ app.registerExtension({
         );
       }
       if (!this.properties.theme) this.properties.theme = "a";
-      if (!["com", "red"].includes(this.properties.civitai_domain)) this.properties.civitai_domain = getCivitaiDomain();
       if (this.properties.use_cache === undefined) this.properties.use_cache = false;   // default off
       if (!MODEL_TYPES.includes(this.properties.model_type)) this.properties.model_type = "Basic";
       const rows = JSON.parse(this.properties.stack_data);
@@ -1042,9 +998,7 @@ app.registerExtension({
 
         // Info glyph (row right edge)
         if (x > C.iX && x < C.iX + C.iW && data[i].lora !== "None") {
-          openLoraInfo(data[i].lora, t, d => {
-            this.properties.civitai_domain = d;  // mirror the panel choice onto the node
-          });
+          openLoraInfo(data[i].lora, t);
           return true;
         }
 
