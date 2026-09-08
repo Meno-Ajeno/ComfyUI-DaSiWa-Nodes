@@ -283,11 +283,13 @@ function buildLoraInfoPanelHtml(info, theme) {
   );
   if (info.civitaiFound) {
     // The backend returns both mirror links (.com + .red, same modelId/versionId
-    // on each). Both are always shown, color-coded: BLUE: for .com, RED: for .red.
+    // on each). Both are always shown; each is preceded by a colored label
+    // (BLUE: for .com, RED: for .red) and the anchor itself is tinted to match.
     const comLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.com")) || "";
     const redLink = (info.links || []).find(l => typeof l === "string" && l.includes("civitai.red")) || "";
     const linkRow = (label, color, url) => url
-      ? '<a href="' + esc(url) + '" target="_blank" rel="noreferrer" style="display:block;overflow-wrap:anywhere;color:' + color + ';">' + label + ' ' + esc(url) + "</a>"
+      ? '<span style="display:block;overflow-wrap:anywhere;"><span style="color:' + color + ';font-weight:bold;">' + label + '</span> ' +
+        '<a href="' + esc(url) + '" target="_blank" rel="noreferrer" style="color:' + color + ';">' + esc(url) + "</a></span>"
       : "";
     const linksHtml = linkRow("BLUE:", "#58a6ff", comLink) + linkRow("RED:", "#ff6b6b", redLink);
     out.push(

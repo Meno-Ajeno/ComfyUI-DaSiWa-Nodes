@@ -57,10 +57,10 @@ assert.match(html, /data-action="copy-words"/);
 assert.match(html, /data-action="copy-selected"/);
 assert.match(html, /seed 7/);
 assert.match(html, /abababab/);
-// Dual-link display: color-coded links with BLUE:/RED: prefix inside the anchor,
-// no domain selector buttons.
-assert.match(html, /<a href="https:\/\/civitai\.com\/models\/123\?modelVersionId=456"[^>]*color:#58a6ff[^>]*>BLUE: /);
-assert.match(html, /<a href="https:\/\/civitai\.red\/models\/123\?modelVersionId=456"[^>]*color:#ff6b6b[^>]*>RED: /);
+// Dual-link display: BLUE:/RED: labels sit OUTSIDE the anchors (plain colored
+// text), each anchor is tinted to match; no domain selector buttons.
+assert.match(html, /<span[^>]*color:#58a6ff[^>]*>BLUE:<\/span> <a href="https:\/\/civitai\.com\/models\/123\?modelVersionId=456"[^>]*color:#58a6ff[^>]*>https:\/\/civitai\.com\/models\/123\?modelVersionId=456<\/a>/);
+assert.match(html, /<span[^>]*color:#ff6b6b[^>]*>RED:<\/span> <a href="https:\/\/civitai\.red\/models\/123\?modelVersionId=456"[^>]*color:#ff6b6b[^>]*>https:\/\/civitai\.red\/models\/123\?modelVersionId=456<\/a>/);
 assert.doesNotMatch(html, /data-domain="com"/);
 assert.doesNotMatch(html, /data-domain="red"/);
 
