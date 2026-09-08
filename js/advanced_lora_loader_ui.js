@@ -291,8 +291,10 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
   };
   out.push(
     '<div style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) +
-    (info.sha256 ? '<span style="float:right;opacity:.6;font-size:9px;user-select:all;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</span>" : "") +
-    "</div>"
+    "</div>" +
+    (info.sha256
+      ? '<div style="font:9px \'Courier New\',monospace;opacity:.5;user-select:all;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</div>"
+      : "")
   );
   // Controls row: domain selector (.com/.red) + actions. The file name lives on
   // its own row above so long folder paths can't stretch or wrap the buttons.
