@@ -288,8 +288,14 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
     (civitaiDomain === d ? "font-weight:bold;background:rgba(255,255,255,.18);" : "") +
     '">' + "." + d + "</button>";
   out.push(
-    '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
-      '<span style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) + "</span>" +
+    '<div style="font:11px \'Courier New\',monospace;opacity:.8;overflow-wrap:anywhere;">' + esc(info.file) +
+    (info.sha256 ? '<span style="float:right;opacity:.6;font-size:9px;user-select:all;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</span>" : "") +
+    "</div>"
+  );
+  // Controls row: domain selector (.com/.red) + actions. The file name lives on
+  // its own row above so long folder paths can't stretch or wrap the buttons.
+  out.push(
+    '<div style="display:flex;gap:6px;align-items:center;margin-top:4px;">' +
       '<span style="margin-left:auto;display:flex;gap:3px;align-items:center;">' +
         '<span title="Civitai domain — both mirrors are searched, this picks the link shown first" style="font:9px \'Courier New\',monospace;opacity:.55;">civitai</span>' +
         domBtn("com") + domBtn("red") +
@@ -300,9 +306,6 @@ function buildLoraInfoPanelHtml(info, theme, civitaiDomain) {
       '<button data-action="close" title="Close" style="' + btnStyle + ';margin-left:auto;">×</button>' +
     "</div>"
   );
-  if (info.sha256) {
-    out.push('<div style="font:9px \'Courier New\',monospace;opacity:.5;">sha256 ' + esc(info.sha256.slice(0, 16)) + "</div>");
-  }
   if (info.civitaiFound) {
     // The backend returns both mirror links (.com + .red, same modelId/versionId
     // on each). Show them both; the domain selector picks the order.
