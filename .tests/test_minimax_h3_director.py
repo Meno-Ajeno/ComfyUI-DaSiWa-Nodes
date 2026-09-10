@@ -459,6 +459,26 @@ def test_fl2va_slots_map_opening_and_closing_independent_of_item_order():
     assert guide["last_frame"] == closing_frame
 
 
+def test_l2va_prefers_the_new_slot_one_but_preserves_legacy_slot_zero_workflows():
+    preferred_closing_frame = "slot-one-closing.png"
+    legacy_closing_frame = "slot-zero-closing.png"
+
+    guide, *_ = director.MiniMaxH3Director().build_guide(
+        "L2VA", "", 1344, 768, 5, "match", json.dumps({"items": [
+            {"type": "image", "value": legacy_closing_frame, "slot": 0},
+            {"type": "image", "value": preferred_closing_frame, "slot": 1},
+        ]})
+    )
+    assert guide["last_frame"] == preferred_closing_frame
+
+    legacy_guide, *_ = director.MiniMaxH3Director().build_guide(
+        "L2VA", "", 1344, 768, 5, "match", json.dumps({"items": [
+            {"type": "image", "value": legacy_closing_frame, "slot": 0},
+        ]})
+    )
+    assert legacy_guide["last_frame"] == legacy_closing_frame
+
+
 def test_ref2va_image_references_follow_their_displayed_slots_after_reordering():
     state = {"items": [
         {"type": "image", "value": "picture-1.png", "slot": 0, "order": 0},

@@ -143,13 +143,12 @@ class MiniMaxH3Director:
                 # because slot 0's image was deleted.
                 image_items = [pair for pair in image_items if pair[1].get("slot", pair[0]) == 0]
             elif mode == "L2VA":
-                # Slot 0 is a display-only holdover shared with FL2VA (so the same
-                # two references can be reused when swapping between the two modes
-                # without re-adding files) and is never eligible for L2VA itself --
-                # only slot 1 is ever used as the single reference. Bounding to
-                # exactly {0, 1} (not "lowest N remaining") keeps any REF2VA-era
-                # image at slot 2+ from ever being pulled in.
-                image_items = [pair for pair in image_items if pair[1].get("slot", pair[0]) == 1]
+                # New timelines reserve slot 0 as the FL2VA holdover and use slot 1
+                # as the closing frame. Older saved L2VA workflows used slot 0 as
+                # their only frame, so preserve that established state when no slot
+                # 1 item exists. Never fall through to unrelated REF2VA slots.
+                slot_one_items = [pair for pair in image_items if pair[1].get("slot", pair[0]) == 1]
+                image_items = slot_one_items or [pair for pair in image_items if pair[1].get("slot", pair[0]) == 0]
             else:
                 # FL2VA: bound to exactly {0, 1}, not "lowest 2 remaining" -- same
                 # reasoning as I2VA/L2VA above, and it also means the two items
