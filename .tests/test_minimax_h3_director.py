@@ -259,18 +259,21 @@ def test_guider_routes_l2va_to_image_to_video_with_only_last_frame(monkeypatch):
     assert calls[0][-2:] == (None, "closing")
 
 
-def test_guider_routes_ref2va_with_int_dimensions_in_their_correct_slots(monkeypatch):
-    """Regression: ComfyUI re-ordered MiniMaxH3ReferenceToVideo.execute to
-    (clip, prompt, width, height, length, ref_image_size, vae, audio_vae, ...).
-    The guider once still passed the old (clip, vae, audio_vae, prompt, ...) order,
-    which bound the string prompt into `height` and crashed `height // 16`.
-    """
+def test_guider_routes_ref2va_by_name_against_the_current_native_signature(monkeypatch):
+    """REF2VA uses named arguments, preserving Core's prompt-before-VAE order."""
     calls = []
 
     class NativeReferenceToVideo:
         @staticmethod
-        def execute(*args, **kwargs):
-            calls.append((args, kwargs))
+        def execute(clip, prompt, width, height, length, ref_image_size="match", vae=None,
+                    audio_vae=None, ref_images=None, ref_videos=None,
+                    ref_video_audios=None, ref_audios=None):
+            calls.append({
+                "clip": clip, "prompt": prompt, "width": width, "height": height,
+                "length": length, "ref_image_size": ref_image_size, "vae": vae,
+                "audio_vae": audio_vae, "ref_images": ref_images, "ref_videos": ref_videos,
+                "ref_video_audios": ref_video_audios, "ref_audios": ref_audios,
+            })
             return ["conditioning"], {"samples": np.zeros((1, 2, 3))}
 
     monkeypatch.setattr(director_guide, "_native_node", lambda _name: NativeReferenceToVideo)
@@ -287,18 +290,12 @@ def test_guider_routes_ref2va_with_int_dimensions_in_their_correct_slots(monkeyp
 
     assert positive == ["conditioning"]
     assert latent["samples"].shape == (1, 2, 3)
-    args, kwargs = calls[0]
-    # width/height must reach their native slots as ints, and the string prompt
-    # must NOT be misbound into a dimension slot.
-    assert args[0] is clip
-    assert args[1] == "A red fox walks through a quiet forest."
-    assert args[2] == 1344 and isinstance(args[2], int)
-    assert args[3] == 768 and isinstance(args[3], int)
-    assert args[4] == 124 and isinstance(args[4], int)
-    assert args[5] == "match"
-    assert kwargs.get("vae") is vae
-    assert kwargs.get("audio_vae") is audio_vae
-    assert kwargs.get("ref_images") == {"ref_image_1": "fox.png"}
+    assert calls == [{
+        "clip": clip, "prompt": "A red fox walks through a quiet forest.",
+        "width": 1344, "height": 768, "length": 124, "ref_image_size": "match",
+        "vae": vae, "audio_vae": audio_vae, "ref_images": {"ref_image_1": "fox.png"},
+        "ref_videos": {}, "ref_video_audios": {}, "ref_audios": {},
+    }]
 
 
 def test_director_ui_exposes_the_derived_frame_slots():

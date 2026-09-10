@@ -23,7 +23,7 @@ The Director's full change history now lives in the collection-wide [News & Chan
 - Mode-specific prompt builders:
   - FL2VA/I2VA/L2VA/T2VA: guided fields for description and audio sections with automatic alignment headers.
   - REF2VA: six free-text sections (subject_definitions, summary, retention_analysis, detailed_description, overall_soundscape, non_diegetic_music) with helper buttons — Insert Shot, Prefill Labels & Summary, and Preview Prompt.
-- Only the selected model is loaded: `ref2va_model` for REF2VA, `fl2va_model` for all image-to-video modes (FL2VA family + Image Inpaint); the Guide node calls ComfyUI's built-in H3 nodes.
+- Only the selected model is loaded: `ref2va_model` for REF2VA, `fl2va_model` for all image-to-video modes (FL2VA family + Image Inpaint); the Guide node calls ComfyUI's built-in H3 nodes. REF2VA passes native inputs by name, preserving compatibility if Core reorders them (v0.4.36).
 
 ## Installation and graph setup
 

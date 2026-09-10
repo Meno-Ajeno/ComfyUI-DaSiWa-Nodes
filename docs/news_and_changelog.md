@@ -2,9 +2,11 @@
 
 Collection-wide news and change history for the DaSiWa Custom Nodes — one place to see what changed across every node. Per-node deep dives (UI guides, wiring, options) stay in their own docs, linked from the README.
 
-This changelog covers the last two months: **2026-06-29 → 2026-09-08**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
+This changelog covers the last two months: **2026-06-29 → 2026-09-10**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
 
 ## News
+
+- **MiniMax H3 Director Guide: REF2VA native-call compatibility (09-10):** REF2VA now passes every native `MiniMaxH3ReferenceToVideo` input by name. The current Core order remains correct, and the Guide stays compatible if Core reorders those inputs. Version bump to 0.4.36.
 
 - **Advanced LoRA Loader: Civitai mirrors + (i) panel rework (09-08):** the info panel now always shows both Civitai mirror links — `.com` and `.red` — with color-coded labels (`BLUE:` in blue, `RED:` in red, labels plain text outside the clickable links). The backend looks the file up on `.com` first and falls back to the `.red` mirror, so a working mirror still yields a link when one side is down. Lookups are memoized, misses included — a LoRA with no Civitai page no longer re-hits the API on every panel open; the panel's **Refresh** button forces a re-lookup. The file name and sha256 now sit on their own rows at the top of the panel, so long folder paths can't stretch the controls. Version bump to 0.4.35.
 
@@ -27,6 +29,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.36 | 09-10 | MiniMax H3 Director Guide: named REF2VA native-call inputs for Core-order compatibility |
 | 0.4.35 | 09-08 | Advanced LoRA Loader: dual Civitai `.com`/`.red` links, `.red` mirror fallback, negative-lookup memoization, (i) panel layout rework |
 | 0.4.33 | 09-04 | System Monitor chips: stable fixed-width formatting; fast disks switch to GB/s (#36) |
 | 0.4.30 | 08-29 | Seed Control: Random-mode roll via the graphToPrompt choke point; panel DOM syncs after a run |
@@ -56,6 +59,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### MiniMax H3 Director (v1)
 
+- **09-10:** **REF2VA native-call compatibility (0.4.36):** the Guide now binds every `MiniMaxH3ReferenceToVideo` input by name. The current Core prompt-before-VAE order was already correct; named binding preserves it and remains safe if Core reorders inputs later.
 - **08-28:** **Director 2.0 frozen:** the v2 fork is removed from the nodepack and preserved under `frozen/`; Image Inpaint is documented as a v1 feature.
 - **08-28:** **Image Inpaint mode** in v1: normalizer, 5-frame single-image guide, Guide-node conditioning + latent emission; `ref2va_requested` output renamed to `inpaint_requested`; request outputs now follow the mode widget; auto aspect resolves by timeline slot instead of insertion order.
 - **08-26:** seed panel revamp: spinner column slimmed and aligned with the input.
