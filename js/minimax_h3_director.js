@@ -1,6 +1,29 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
+let h3VaeErrorPopupInstalled = false;
+
+function installH3VaeErrorPopup() {
+  if (h3VaeErrorPopupInstalled) return;
+  h3VaeErrorPopupInstalled = true;
+
+  api.addEventListener("execution_error", ({ detail }) => {
+    if (detail?.node_type !== "MiniMaxH3DirectorGuide") return;
+
+    const message = String(detail?.exception_message || "");
+
+    if (
+      message.includes("Audio VAE is connected to the 'vae'") ||
+      message.includes("Video VAE is connected to the 'audio_vae'")
+    ) {
+      window.alert(
+        "MiniMax H3 VAE MISMATCH\n\n" +
+        message
+      );
+    }
+  });
+}
+
 const DEFAULT_BUILDER_STATE = mode => {
   if (mode === "REF2VA") {
     return { version: 2, mode: "REF2VA", duration: 5, ref: { subject_definitions: "", summary: "", retention_analysis: "", detailed_description: "", soundscape: "", music: "" } };
@@ -1249,4 +1272,17 @@ function install(node) {
   render();
 }
 
-app.registerExtension({ name: "DaSiWa.MiniMaxH3Director", nodeCreated(node) { if (node.comfyClass === "MiniMaxH3Director") install(node); }, loadedGraphNode(node) { if (node.comfyClass === "MiniMaxH3Director") { install(node); node.__dasiwaH3RestorePersistedState?.(); } } });
+installH3VaeErrorPopup();
+
+app.registerExtension({
+  name: "DaSiWa.MiniMaxH3Director",
+  nodeCreated(node) {
+    if (node.comfyClass === "MiniMaxH3Director") install(node);
+  },
+  loadedGraphNode(node) {
+    if (node.comfyClass === "MiniMaxH3Director") {
+      install(node);
+      node.__dasiwaH3RestorePersistedState?.();
+    }
+  }
+});

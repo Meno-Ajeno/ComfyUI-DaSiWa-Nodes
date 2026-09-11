@@ -30,6 +30,36 @@ def _native_node(name):
             "Update ComfyUI to a version that includes MiniMax H3 support."
         ) from exc
 
+def _h3_vae_kind(value):
+    first_stage = getattr(value, "first_stage_model", None)
+    class_name = type(first_stage).__name__ if first_stage is not None else ""
+
+    if class_name == "MiniMaxH3VideoVAE":
+        return "video"
+    if class_name == "MiniMaxH3AudioVAE":
+        return "audio"
+    return "unknown"
+
+
+def _validate_h3_vaes(vae, audio_vae, mode):
+    vae_kind = _h3_vae_kind(vae)
+    audio_vae_kind = _h3_vae_kind(audio_vae)
+
+    if vae_kind == "audio":
+        raise ValueError(
+            "MiniMax H3 Director: Audio VAE is connected to the 'vae' "
+            "(Video VAE) slot. Connect minimax_h3_video_vae_* to 'vae'."
+        )
+
+    if mode == "REF2VA":
+        if audio_vae is None:
+            raise ValueError("audio_vae is required for REF2VA")
+
+        if audio_vae_kind == "video":
+            raise ValueError(
+                "MiniMax H3 Director: Video VAE is connected to the "
+                "'audio_vae' slot. Connect minimax_h3_audio_vae_* to 'audio_vae'."
+            )
 
 class MiniMaxH3DirectorGuide:
     """Turn one Director guide socket into the exact native MiniMax H3 call."""
@@ -52,6 +82,8 @@ class MiniMaxH3DirectorGuide:
 
     def apply(self, clip, vae, guide, audio_vae=None):
         state = normalize_guide(guide)
+        _validate_h3_vaes(vae, audio_vae, state.mode)
+
         if state.mode in {"T2VA", "I2VA", "FL2VA", "L2VA"}:
             native = _native_node("MiniMaxH3ImageToVideo")
             log_dasiwa(
