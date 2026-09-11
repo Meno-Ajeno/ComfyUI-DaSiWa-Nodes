@@ -5,7 +5,7 @@ const sourcePath = new URL("../js/minimax_h3_director.js", import.meta.url);
 let source = await readFile(sourcePath, "utf8");
 source = source.replace(
     'import { app } from "../../scripts/app.js";\nimport { api } from "../../scripts/api.js";',
-    "const app = { registerExtension() {} }; const api = {};"
+    "const app = { registerExtension() {} }; const api = { addEventListener() {} };"
 );
 source += "\nexport { mediaTypeFor, wavDurationFromBuffer, REPOSITORY_URL, MINIMAX_MULTIPLE, ASPECT_OPTIONS, RESOLUTION_PRESETS };";
 

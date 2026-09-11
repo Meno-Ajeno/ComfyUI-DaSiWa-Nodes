@@ -12,7 +12,7 @@ The Director's full change history now lives in the collection-wide [News & Chan
 
 - One node holds all your references, trims, ordering, endpoint frames, and prompts.
 - Five endpoint modes — T2VA, I2VA, L2VA, FL2VA (text/image endpoints, up to 2 frame slots) and REF2VA (multi-image/video/audio references) — plus **Image Inpaint** (exactly one image, single-frame output).
-- Two timeline lanes: Image/Video + Audio. Click a lane to select it; paste / drop media there.
+- Separate Image, Video, and Audio lanes. Click a lane to select it; paste / drop compatible media there.
 - Per-video stream switch: choose Video only, Audio only, or Video+embedded-audio with identical trim ranges.
 - Standalone audio clips can be trimmed with left/right handles just like video.
 - Video thumbnails: each uploaded video shows its first frame as a background preview behind the clip tile.
@@ -88,7 +88,7 @@ Connections detail:
 
 Important: the Guide node replaces and wraps ComfyUI's native `MiniMaxH3ImageToVideo` and `MiniMaxH3ReferenceToVideo` nodes. You do not add or wire those native nodes yourself — the Guide calls them internally based on the chosen mode.
 
-The Director has optional model sockets (`fl2va_model`, `ref2va_model`) for lazy loading: connect whichever model matches your active mode. The Guide refuses REF2VA without an audio VAE connected.
+The Director has optional model sockets (`fl2va_model`, `ref2va_model`) for lazy loading: connect whichever model matches your active mode. The Guide refuses REF2VA without an audio VAE and detects a swapped MiniMax H3 video/audio VAE before native execution (v0.4.37).
 
 ## Modes at a glance
 
@@ -158,21 +158,22 @@ Open the node and read top-to-bottom.
   - Going to REF2VA restores all previously added media.
   - Going to Image Inpaint requires exactly one image; video/audio are blocked and the audio lane is disabled.
 - **Prompt Mode toggle:** a **Simple** / **Structured** pair next to the mode buttons switches how builder fields assemble into the final prompt (Structured keeps the labelled sections, Simple renders one flat block). The selection is persisted and restored on load.
+- **Load / Save:** save Reference Files, Prompts, or All as a pack; load the same scope by append or overwrite. Loading validates target-mode limits and missing files before changing the timeline, and restores the saved model mode.
 - **Clear button:** always visible; removes all media and prompts from the timeline. With no content it is dimmed and reports "Nothing to clear." instead of clearing.
 - **Remove button:** appears when a clip is selected; deletes that item.
 - **? button:** opens the online documentation on GitHub.
 
 ### Timeline area
 
-The main workspace has two horizontal lanes stacked vertically.
+The main workspace has separate Image, Video, and Audio lanes stacked vertically.
 
 #### Lane selection
 
 - Click anywhere on a lane to select it. The selected lane gets a highlight and displays "· selected".
 - Selection determines where pasted media goes:
-  - Select **Image/Video** lane, then Ctrl+V or drop files → images/videos land here.
-  - Select **Audio** lane, then Ctrl+V or drop files → audio lands here.
-- FL2VA disables the Audio lane entirely.
+  - Select **Image**, **Video**, or **Audio**, then Ctrl+V or drop a compatible file into that lane.
+  - In REF2VA, a video set to **A** occupies the Audio lane; **V+A** presents linked video and audio references while retaining their shared trim.
+- FL2VA disables the Video and Audio lanes entirely.
 
 #### Adding media
 

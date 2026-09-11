@@ -2,9 +2,11 @@
 
 Collection-wide news and change history for the DaSiWa Custom Nodes — one place to see what changed across every node. Per-node deep dives (UI guides, wiring, options) stay in their own docs, linked from the README.
 
-This changelog covers the last two months: **2026-06-29 → 2026-09-10**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
+This changelog covers the last two months: **2026-06-29 → 2026-09-11**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
 
 ## News
+
+- **MiniMax H3 Director: reference-pack workflow and layout fixes (09-11):** Save/Load packs can append or overwrite reference files, prompts, or both after validating the saved mode, real target limits, and referenced-file availability. REF2VA now separates Image, Video, and Audio lanes, while V / A / V+A references retain their correct limits and linked audio placement. L2VA's closing-frame slot is locked, and the Guide reports swapped H3 VAEs before native execution. Prompt-mode toolbar controls wrap inside their node instead of overflowing. Version bump to 0.4.37.
 
 - **MiniMax H3 Director Guide: REF2VA native-call compatibility (09-10):** REF2VA now passes every native `MiniMaxH3ReferenceToVideo` input by name. The current Core order remains correct, and the Guide stays compatible if Core reorders those inputs. Version bump to 0.4.36.
 
@@ -29,6 +31,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.37 | 09-11 | MiniMax H3 Director: save/load packs, split media lanes, L2VA lock, VAE validation, and responsive toolbar |
 | 0.4.36 | 09-10 | MiniMax H3 Director Guide: named REF2VA native-call inputs for Core-order compatibility |
 | 0.4.35 | 09-08 | Advanced LoRA Loader: dual Civitai `.com`/`.red` links, `.red` mirror fallback, negative-lookup memoization, (i) panel layout rework |
 | 0.4.33 | 09-04 | System Monitor chips: stable fixed-width formatting; fast disks switch to GB/s (#36) |
@@ -59,6 +62,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### MiniMax H3 Director (v1)
 
+- **09-11:** **Reference packs, lanes, and compatibility (0.4.37):** Save/Load packs preserve reference-file and prompt data independently, support append or overwrite, validate the saved target mode and missing files before applying, and preserve relative placement on mode remaps. REF2VA now separates Image, Video, and Audio lanes; V / A / V+A sources reserve and label their correct reference slots. L2VA locks the decorative slot 0 and uses slot 1 for its closing frame; legacy saved L2VA closing-frame layouts remain accepted. The Guide detects swapped H3 video/audio VAEs before native execution, while the toolbar wraps inside the node at narrow widths.
 - **09-10:** **REF2VA native-call compatibility (0.4.36):** the Guide now binds every `MiniMaxH3ReferenceToVideo` input by name. The current Core prompt-before-VAE order was already correct; named binding preserves it and remains safe if Core reorders inputs later.
 - **08-28:** **Director 2.0 frozen:** the v2 fork is removed from the nodepack and preserved under `frozen/`; Image Inpaint is documented as a v1 feature.
 - **08-28:** **Image Inpaint mode** in v1: normalizer, 5-frame single-image guide, Guide-node conditioning + latent emission; `ref2va_requested` output renamed to `inpaint_requested`; request outputs now follow the mode widget; auto aspect resolves by timeline slot instead of insertion order.

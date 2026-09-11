@@ -8,7 +8,7 @@ A high-performance collection of custom nodes for ComfyUI, optimized for video w
 
 ### 🎬 MiniMax H3 Director
 
-Timeline-based authoring for MiniMax H3 text/image/video generation, reference-to-video, and single-image inpainting workflows, integrated with ComfyUI's native H3 implementation. Two lanes (Image/Video + Audio), slot-based layout, drag-and-drop / paste / upload, per-clip trims, and structured prompt builders per mode.
+Timeline-based authoring for MiniMax H3 text/image/video generation, reference-to-video, and single-image inpainting workflows, integrated with ComfyUI's native H3 implementation. Separate Image, Video, and Audio lanes, slot-based layout, drag-and-drop / paste / upload, per-clip trims, save/load packs, and structured prompt builders per mode.
 
 ![MiniMax H3 Director](assets/DaSiWa-MiniMaxH3-Director.png)
 
