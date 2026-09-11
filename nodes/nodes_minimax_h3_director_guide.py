@@ -51,6 +51,22 @@ class MiniMaxH3DirectorGuide:
     CATEGORY = "DaSiWa/MiniMax H3"
 
     def apply(self, clip, vae, guide, audio_vae=None):
+        def h3_vae_kind(value):
+            first_stage = getattr(value, "first_stage_model", None)
+            class_name = type(first_stage).__name__ if first_stage is not None else ""
+            if class_name == "MiniMaxH3VideoVAE":
+                return "video"
+            if class_name == "MiniMaxH3AudioVAE":
+                return "audio"
+            return "unknown"
+
+        vae_kind = h3_vae_kind(vae)
+        audio_vae_kind = h3_vae_kind(audio_vae)
+
+        if vae_kind == "audio" and audio_vae_kind == "video":
+            vae, audio_vae = audio_vae, vae
+            vae_kind, audio_vae_kind = "video", "audio"
+
         state = normalize_guide(guide)
         if state.mode in {"T2VA", "I2VA", "FL2VA", "L2VA"}:
             native = _native_node("MiniMaxH3ImageToVideo")
@@ -102,15 +118,12 @@ class MiniMaxH3DirectorGuide:
             f"refs=images:{len(state.ref_images)},videos:{len(state.ref_videos)},"
             f"video_audio:{len(state.ref_video_audios)},audio:{len(state.ref_audios)}",
         )
-        # Native signature (since ComfyUI's "Make VAE optional" change):
-        # execute(clip, prompt, width, height, length, ref_image_size, vae, audio_vae,
-        #          ref_images, ref_videos, ref_video_audios, ref_audios).
-        # The tail is bound by name so a future parameter reorder cannot re-silently
-        # misbind the positional slots (which previously put a string prompt into `height`).
+        # Current native signature puts prompt before the optional VAEs. Bind every
+        # argument by name so this adapter remains safe if ComfyUI reorders inputs.
         positive, latent = native.execute(
-            clip, state.resolved_prompt, state.width, state.height, state.length,
-            state.ref_image_size,
-            vae=vae, audio_vae=audio_vae,
+            clip=clip, prompt=state.resolved_prompt,
+            width=state.width, height=state.height, length=state.length,
+            ref_image_size=state.ref_image_size, vae=vae, audio_vae=audio_vae,
             ref_images=state.ref_images, ref_videos=state.ref_videos,
             ref_video_audios=state.ref_video_audios, ref_audios=state.ref_audios,
         )
