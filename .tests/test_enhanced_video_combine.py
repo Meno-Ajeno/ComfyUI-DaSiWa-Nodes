@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import math
 import os
 import shutil
@@ -9,6 +10,7 @@ from pathlib import Path
 
 import torch
 import pytest
+from PIL import Image
 
 
 class _FolderPaths:
@@ -32,6 +34,12 @@ assert helper_spec is not None and helper_spec.loader is not None
 helper_logging = importlib.util.module_from_spec(helper_spec)
 sys.modules["helper_logging"] = helper_logging
 helper_spec.loader.exec_module(helper_logging)
+PYAV_HELPER_PATH = Path(__file__).parents[1] / "nodes" / "helper_pyav_video.py"
+pyav_helper_spec = importlib.util.spec_from_file_location("helper_pyav_video", PYAV_HELPER_PATH)
+assert pyav_helper_spec is not None and pyav_helper_spec.loader is not None
+helper_pyav_video = importlib.util.module_from_spec(pyav_helper_spec)
+sys.modules["helper_pyav_video"] = helper_pyav_video
+pyav_helper_spec.loader.exec_module(helper_pyav_video)
 MODULE_PATH = Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py"
 spec = importlib.util.spec_from_file_location("nodes_enhanced_video_combine", MODULE_PATH)
 assert spec is not None and spec.loader is not None
@@ -39,39 +47,15 @@ enhanced_video_combine = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(enhanced_video_combine)
 
 
-def test_find_ffmpeg_prefers_python_environment_binary(tmp_path, monkeypatch):
-    package_dir = tmp_path / "imageio_ffmpeg"
-    binary_dir = package_dir / "binaries"
-    binary_dir.mkdir(parents=True)
-    package_ffmpeg = binary_dir / "ffmpeg-test"
-    package_ffmpeg.write_bytes(b"binary")
-    monkeypatch.setitem(
-        sys.modules,
-        "imageio_ffmpeg",
-        types.SimpleNamespace(__file__=str(package_dir / "__init__.py")),
-    )
-    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/ffmpeg")
-    monkeypatch.setenv("IMAGEIO_FFMPEG_EXE", "/attacker/ffmpeg")
-    monkeypatch.delenv("DASIWA_ALLOW_SYSTEM_FFMPEG", raising=False)
+def test_encoding_uses_pyav_without_external_processes():
+    source = (Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py").read_text(encoding="utf-8")
+    pyproject = (Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8")
 
-    assert enhanced_video_combine.find_ffmpeg() == str(package_ffmpeg.resolve())
-
-
-def test_find_ffmpeg_requires_opt_in_for_system_fallback(tmp_path, monkeypatch):
-    package_dir = tmp_path / "imageio_ffmpeg"
-    package_dir.mkdir()
-    monkeypatch.setitem(
-        sys.modules,
-        "imageio_ffmpeg",
-        types.SimpleNamespace(__file__=str(package_dir / "__init__.py")),
-    )
-    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/ffmpeg")
-    monkeypatch.delenv("DASIWA_ALLOW_SYSTEM_FFMPEG", raising=False)
-
-    assert enhanced_video_combine.find_ffmpeg() is None
-
-    monkeypatch.setenv("DASIWA_ALLOW_SYSTEM_FFMPEG", "1")
-    assert enhanced_video_combine.find_ffmpeg() == "/usr/bin/ffmpeg"
+    assert "import subprocess" not in source
+    assert "create_subprocess_exec" not in source
+    assert "subprocess." not in source
+    assert '"av>=18.0"' in pyproject
+    assert '"imageio-ffmpeg' not in pyproject
 
 
 def test_node_schema_and_registration():
@@ -111,9 +95,9 @@ def test_node_schema_and_registration():
     assert "previewWidget.aspectRatio = 16 / 9;" in preview_source
     assert "transcodedVideoUrl" in preview_source
     assert "function shouldUseTranscodedPreview(video)" in preview_source
-    assert '"AV1|WebM|8"' in preview_source
-    assert '"VP9|WebM|8"' in preview_source
-    assert '"H.264|MP4|8"' in preview_source
+    assert 'const NATIVE_BROWSER_VIDEO = new Set(["H.264|MP4|8"]);' in preview_source
+    assert '"AV1|WebM|8"' not in preview_source
+    assert '"VP9|WebM|8"' not in preview_source
     assert "getHeight: () => previewHeight()," in preview_source
     assert "node.setSize([node.size[0], node.computeSize([node.size[0], node.size[1]])[1]]);" in preview_source
     assert "video.fps" in preview_source
@@ -160,7 +144,7 @@ def test_node_schema_and_registration():
     on_executed_source = preview_source.split("nodeType.prototype.onExecuted", 1)[1]
     assert "this.dasiwaVideoPreviewWidget.aspectRatio" in on_executed_source
     assert "preview.addEventListener(\"error\"" in preview_source
-    assert "Preview unavailable (FFmpeg or browser decoder missing)" in preview_source
+    assert "Preview unavailable (PyAV transcode or browser decoder failed)" in preview_source
     assert "const originalUrl = videoUrl(video);" in on_executed_source
     assert "preview.src = shouldUseTranscodedPreview(video) ? transcodedVideoUrl(video) : originalUrl;" in on_executed_source
     assert 'download.textContent = "Download"' in preview_source
@@ -170,9 +154,11 @@ def test_node_schema_and_registration():
     assert "Animated WebP and Animated AVIF are manual image-animation outputs" in preview_source
     assert "onDrawForeground" in preview_source
     assert "isHelpIconHit" in preview_source
-    assert "ProgressBar(_encoded_frame_count(images, pingpong))" in (Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py").read_text(encoding="utf-8")
-    assert '"-progress", "pipe:2", "-nostats"' in (Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py").read_text(encoding="utf-8")
-    assert "now - last_report >= 0.5" in (Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py").read_text(encoding="utf-8")
+    node_source = (Path(__file__).parents[1] / "nodes" / "nodes_enhanced_video_combine.py").read_text(encoding="utf-8")
+    assert "ProgressBar(_encoded_frame_count(images, pingpong))" in node_source
+    assert "helper_pyav_video.encode_attempt" in node_source
+    assert "asyncio.to_thread(helper_pyav_video.transcode_preview" in node_source
+    assert "web.FileResponse" in node_source
 
 
 
@@ -242,28 +228,72 @@ def test_frame_byte_chunks_emit_pingpong_frames_without_materializing_a_batch():
     assert torch.frombuffer(bytearray(b"".join(chunks)), dtype=torch.uint8).reshape(-1, 3)[:, 0].tolist() == [0, 1, 2, 3, 2, 1]
 
 
-def test_ffmpeg_streaming_encode_writes_all_chunked_frames(tmp_path):
-    ffmpeg = shutil.which("ffmpeg")
-    ffprobe = shutil.which("ffprobe")
-    if not ffmpeg or not ffprobe:
-        pytest.skip("FFmpeg and FFprobe are required")
-    images = torch.tensor([0, 1, 2, 3], dtype=torch.float32).reshape(4, 1, 1, 1).repeat(1, 1, 1, 3) / 255
-    output_path = tmp_path / "chunked.mkv"
-    command = [
-        ffmpeg, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", "1x1", "-framerate", "24", "-i", "-",
-        "-c:v", "ffv1", str(output_path),
-    ]
+def test_pyav_streaming_encode_writes_all_frames(tmp_path):
+    av = pytest.importorskip("av")
+    images = torch.tensor([0, 1, 2, 3], dtype=torch.float32).reshape(4, 1, 1, 1).repeat(1, 16, 16, 3) / 255
+    output_path = tmp_path / "frames.mkv"
 
-    result = enhanced_video_combine._run_ffmpeg(
-        command, lambda: enhanced_video_combine._iter_frame_byte_chunks(images, 8, False, max_chunk_bytes=3), lambda _seconds: None,
+    helper_pyav_video.encode_attempt(
+        str(output_path), "MKV", "libx264", 16, 16, 24, 8, 20,
+        lambda: enhanced_video_combine._frame_arrays(images, 8, False),
     )
 
-    assert result.returncode == 0
-    probe = subprocess.run(
-        [ffprobe, "-v", "error", "-count_frames", "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", str(output_path)],
-        capture_output=True, text=True, check=True,
+    with av.open(str(output_path)) as container:
+        assert sum(1 for _ in container.decode(video=0)) == 4
+
+
+def test_pyav_outputs_have_keyframes_at_least_every_second(tmp_path):
+    av = pytest.importorskip("av")
+    images = torch.zeros((73, 16, 16, 3), dtype=torch.float32)
+    output_path = tmp_path / "seekable.mp4"
+    helper_pyav_video.encode_attempt(
+        str(output_path), "MP4", "libx264", 16, 16, 24, 8, 20,
+        lambda: enhanced_video_combine._frame_arrays(images, 8, False),
     )
-    assert probe.stdout.strip() == "4"
+
+    with av.open(str(output_path)) as container:
+        keyframe_times = [
+            float(packet.pts * packet.time_base)
+            for packet in container.demux(video=0)
+            if packet.pts is not None and packet.is_keyframe
+        ]
+    assert keyframe_times == pytest.approx([0.0, 1.0, 2.0, 3.0], abs=0.05)
+
+
+def test_pyav_round_trips_audio_metadata_and_preview(tmp_path):
+    av = pytest.importorskip("av")
+    images = torch.zeros((4, 16, 16, 3), dtype=torch.float32)
+    source = tmp_path / "source.mkv"
+    audio = (torch.zeros((2, 8000), dtype=torch.float32).numpy(), 8000)
+    helper_pyav_video.encode_attempt(
+        str(source), "MKV", "libx264", 16, 16, 4, 8, 20,
+        lambda: enhanced_video_combine._frame_arrays(images, 8, False),
+        {"prompt": {"text": "test"}}, audio, "aac", "128k",
+    )
+    preview = helper_pyav_video.transcode_preview(str(source))
+    try:
+        with av.open(str(source)) as container:
+            assert [stream.type for stream in container.streams] == ["video", "audio"]
+            assert json.loads(container.metadata["PROMPT"]) == {"text": "test"}
+        with av.open(preview) as container:
+            assert [(stream.type, stream.codec_context.name) for stream in container.streams] == [("video", "h264"), ("audio", "aac")]
+    finally:
+        os.unlink(preview)
+
+
+def test_pyav_animated_webp_and_avif_preserve_multiple_frames(tmp_path):
+    av = pytest.importorskip("av")
+    images = torch.rand((3, 32, 32, 3), dtype=torch.float32)
+    for container_name, encoder, suffix in (("Animated WebP", "libwebp_anim", ".webp"), ("Animated AVIF", "libsvtav1", ".avif")):
+        if encoder not in helper_pyav_video.available_encoders():
+            pytest.skip(f"{encoder} is unavailable in this PyAV build")
+        output = tmp_path / f"animation{suffix}"
+        helper_pyav_video.encode_attempt(
+            str(output), container_name, encoder, 32, 32, 8, 8, 20,
+            lambda: enhanced_video_combine._frame_arrays(images, 8, False),
+        )
+        with Image.open(output) as animation:
+            assert getattr(animation, "n_frames", 1) == 3
 
 
 def test_frame_exports_are_written_as_pngs_beside_the_video(tmp_path):
@@ -330,22 +360,16 @@ def test_animated_image_outputs_are_manual_only_and_use_dedicated_encoders():
 
 def test_animated_avif_prefers_nvenc_over_software(monkeypatch):
     captured = []
-
-    class Result:
-        returncode = 0
-        stderr = b""
-
-    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _ffmpeg: {"av1_nvenc", "libaom-av1"})
+    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _backend=None: {"av1_nvenc", "libsvtav1"})
     monkeypatch.setattr(
-        enhanced_video_combine.subprocess, "run",
-        lambda command, **kwargs: captured.append(command) or Result(),
+        helper_pyav_video, "encode_attempt",
+        lambda *args, **kwargs: captured.append((args, kwargs)),
     )
 
     assert enhanced_video_combine._encode_animated_image(
-        "ffmpeg", "Animated AVIF", 8, 1024, 1280, 8, b"frames", "output.avif", 20,
+        None, "Animated AVIF", 8, 1024, 1280, 8, lambda: iter(()), "output.avif", 20,
     ) == "av1_nvenc"
-    assert ["-c:v", "av1_nvenc"] == captured[0][captured[0].index("-c:v"):captured[0].index("-c:v") + 2]
-    assert ["-still-picture", "0", "-f", "avif"] == captured[0][captured[0].index("-still-picture"):captured[0].index("-still-picture") + 4]
+    assert captured[0][0][2] == "av1_nvenc"
 
 
 def test_pingpong_appends_reverse_interior_frames():
@@ -370,37 +394,31 @@ def test_filename_prefix_expands_comfyui_date_format(monkeypatch):
     ) == "video/2026-07-18/130405"
 
 
-def test_audio_file_converts_comfyui_audio_to_interleaved_float32():
-    audio_path, duration = enhanced_video_combine._audio_file({
+def test_audio_file_converts_comfyui_audio_to_planar_float32():
+    audio_data, duration = enhanced_video_combine._audio_file({
         "waveform": torch.tensor([[[0.0, 0.5], [-0.5, 1.0]]]),
         "sample_rate": 2,
     })
-    try:
-        assert audio_path[1:] == (2, 2)
-        assert duration == 1.0
-        assert torch.frombuffer(bytearray(Path(audio_path[0]).read_bytes()), dtype=torch.float32).tolist() == [0.0, -0.5, 0.5, 1.0]
-    finally:
-        os.unlink(audio_path[0])
+
+    assert audio_data[1] == 2
+    assert duration == 1.0
+    assert audio_data[0].tolist() == [[0.0, 0.5], [-0.5, 1.0]]
 
 
-def test_audio_encode_maps_audio_and_crops_video(monkeypatch):
+def test_audio_encode_passes_audio_crop_and_bitrate_to_pyav(monkeypatch):
     captured = []
-
-    class Result:
-        returncode = 0
-        stderr = b""
-
-    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _ffmpeg: {"libx264"})
-    monkeypatch.setattr(enhanced_video_combine.subprocess, "run", lambda command, **kwargs: captured.append(command) or Result())
+    audio = (torch.zeros((2, 48000)).numpy(), 48000)
+    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _backend=None: {"libx264", "libmp3lame"})
+    monkeypatch.setattr(helper_pyav_video, "encode_attempt", lambda *args, **kwargs: captured.append((args, kwargs)))
 
     assert enhanced_video_combine._encode_with_available_encoder(
-        "ffmpeg", "H.264", 8, 2, 2, 24, b"frames", "output.mp4", "MP4", 20, 20,
-        None, ("audio.f32le", 48000, 2), 1.25, True, "MP3", "128k",
+        None, "H.264", 8, 2, 2, 24, lambda: iter(()), "output.mp4", "MP4", 20, 20,
+        None, audio, 1.0, True, "MP3", "128k",
     ) == "libx264"
-    assert "-map" in captured[0]
-    assert "1:a:0" in captured[0]
-    assert ["-c:a", "libmp3lame", "-b:a", "128k"] == captured[0][captured[0].index("-c:a"):captured[0].index("-c:a") + 4]
-    assert ["-t", "1.250000000"] == captured[0][captured[0].index("-t"):captured[0].index("-t") + 2]
+    args = captured[0][0]
+    assert args[11] == "libmp3lame"
+    assert args[12] == "128k"
+    assert args[13] is True
 
 
 def test_audio_fallbacks_are_container_compatible():
@@ -416,60 +434,40 @@ def test_legacy_boolean_audio_codec_uses_auto_selection():
 
 def test_audio_encode_falls_back_when_requested_encoder_fails(monkeypatch):
     captured = []
+    audio = (torch.zeros((2, 48000)).numpy(), 48000)
+    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _backend=None: {"libx264", "libmp3lame", "aac"})
 
-    class FailedResult:
-        returncode = 1
-        stderr = b"requested audio encoder is unavailable"
+    def encode(*args, **kwargs):
+        captured.append(args[11])
+        if args[11] == "libmp3lame":
+            raise RuntimeError("requested audio encoder is unavailable")
 
-    class SuccessResult:
-        returncode = 0
-        stderr = b""
-
-    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _ffmpeg: {"libx264"})
-    monkeypatch.setattr(
-        enhanced_video_combine.subprocess,
-        "run",
-        lambda command, **kwargs: captured.append(command) or (FailedResult() if len(captured) == 1 else SuccessResult()),
-    )
-
+    monkeypatch.setattr(helper_pyav_video, "encode_attempt", encode)
     assert enhanced_video_combine._encode_with_available_encoder(
-        "ffmpeg", "H.264", 8, 2, 2, 24, b"frames", "output.mp4", "MP4", 20, 20,
-        None, ("audio.f32le", 48000, 2), 1.25, False, "MP3", "128k",
+        None, "H.264", 8, 2, 2, 24, lambda: iter(()), "output.mp4", "MP4", 20, 20,
+        None, audio, 1.0, False, "MP3", "128k",
     ) == "libx264"
-    assert "libmp3lame" in captured[0]
-    assert "aac" in captured[1]
+    assert captured == ["libmp3lame", "aac"]
 
 
-def test_encoder_listing_extracts_encoder_names(monkeypatch):
-    class Result:
-        returncode = 0
-        stdout = " V....D h264_nvenc NVIDIA NVENC h264 encoder (codec h264)\n V....D libx264 H.264 encoder (codec h264)\n"
-
-    monkeypatch.setattr(enhanced_video_combine.subprocess, "run", lambda *args, **kwargs: Result())
-
-    assert enhanced_video_combine._available_encoders("ffmpeg") == {"h264_nvenc", "libx264"}
+def test_encoder_listing_uses_pyav(monkeypatch):
+    monkeypatch.setattr(helper_pyav_video, "available_encoders", lambda: {"h264_nvenc", "libx264"})
+    assert enhanced_video_combine._available_encoders() == {"h264_nvenc", "libx264"}
 
 
 def test_basic_encode_log_reports_the_actual_audio_codec(monkeypatch, capsys):
-    class Result:
-        returncode = 0
-        stderr = b""
-
-    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _ffmpeg: {"libx264"})
-    monkeypatch.setattr(enhanced_video_combine.subprocess, "run", lambda *args, **kwargs: Result())
+    audio = (torch.zeros((2, 48000)).numpy(), 48000)
+    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _backend=None: {"libx264", "aac"})
+    monkeypatch.setattr(helper_pyav_video, "encode_attempt", lambda *args, **kwargs: None)
 
     enhanced_video_combine._encode_with_available_encoder(
-        "ffmpeg", "H.264", 8, 2, 2, 24, b"frames", "output.mp4", "MP4", 20, 20, None,
-        audio_path=("audio.f32le", 48000, 2), audio_codec="Auto", audio_bitrate="192k",
+        None, "H.264", 8, 2, 2, 24, lambda: iter(()), "output.mp4", "MP4", 20, 20, None,
+        audio=audio, audio_codec="Auto", audio_bitrate="192k",
     )
-
-    log = capsys.readouterr().out
-    assert "audio=aac/192k" in log
-    assert "missing:" not in log
+    assert "audio=aac/192k" in capsys.readouterr().out
 
 
 def test_output_and_selected_frame_exports_are_published_to_comfyui_assets(tmp_path, monkeypatch):
-    monkeypatch.setattr(enhanced_video_combine, "find_ffmpeg", lambda: "ffmpeg")
     monkeypatch.setattr(enhanced_video_combine, "_encode_with_available_encoder", lambda *args, **kwargs: "libx264")
     monkeypatch.setattr(enhanced_video_combine.folder_paths, "get_output_directory", lambda: str(tmp_path))
     images = torch.rand((2, 4, 6, 3), dtype=torch.float32)
@@ -488,7 +486,6 @@ def test_output_and_selected_frame_exports_are_published_to_comfyui_assets(tmp_p
 
 def test_hevc_output_uses_original_asset_for_streaming_browser_preview(tmp_path, monkeypatch):
     encode_calls = []
-    monkeypatch.setattr(enhanced_video_combine, "find_ffmpeg", lambda: "ffmpeg")
     monkeypatch.setattr(
         enhanced_video_combine,
         "_encode_with_available_encoder",
@@ -517,15 +514,20 @@ def test_hevc_output_uses_original_asset_for_streaming_browser_preview(tmp_path,
     }]
 
 
-def test_missing_ffmpeg_reports_required_mp4_fallback(tmp_path, monkeypatch):
-    monkeypatch.setattr(enhanced_video_combine, "find_ffmpeg", lambda: None)
-    images = torch.rand((2, 4, 6, 3), dtype=torch.float32)
+def test_hardware_failure_falls_back_to_software(monkeypatch):
+    attempts = []
+    monkeypatch.setattr(enhanced_video_combine, "_available_encoders", lambda _backend=None: {"h264_nvenc", "libx264"})
 
-    with pytest.raises(RuntimeError, match="H.264/MP4 fallback"):
-        enhanced_video_combine.DaSiWa_EnhancedVideoCombine().combine(
-            images, 24.0, "H.264", "Auto", "Auto", 10, False, True,
-            "video", True, False,
-        )
+    def encode(*args, **kwargs):
+        attempts.append(args[2])
+        if args[2] == "h264_nvenc":
+            raise RuntimeError("GPU unavailable")
+
+    monkeypatch.setattr(helper_pyav_video, "encode_attempt", encode)
+    assert enhanced_video_combine._encode_with_available_encoder(
+        None, "H.264", 8, 16, 16, 24, lambda: iter(()), "video.mp4", "MP4", 20, 20, None,
+    ) == "libx264"
+    assert attempts == ["h264_nvenc", "libx264"]
 
 
 def test_audio_encoder_coerces_bool_to_auto():

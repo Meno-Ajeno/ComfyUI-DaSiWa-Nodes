@@ -174,7 +174,8 @@ Converts an `IMAGE` batch into a high-quality video with optional `AUDIO` muxing
 ![DaSiWa Enhanced Video Combine](assets/DaSiWa-Enhanced-Video-Combine.png)
 
 - **Codecs:** Auto (AV1 → VP9 → H.264), or explicit AV1 / VP9 / H.264 / H.265(HEVC). Hardware-first encoder chain (NVENC → QSV → AMF → VAAPI → software); mandatory H.264/MP4 fallback.
-- **FFmpeg isolation:** Uses the `imageio-ffmpeg` executable installed in ComfyUI's Python environment. A system `ffmpeg` on `PATH` is ignored unless the operator explicitly sets `DASIWA_ALLOW_SYSTEM_FFMPEG=1` before starting ComfyUI; this opt-in selects the system build for hardware encoders or codecs missing from the bundled build.
+- **PyAV-native encoding (v0.4.40):** Encoding, audio muxing, metadata, animated outputs, and preview transcoding run through PyAV 18 and its bundled FFmpeg libraries without launching external processes. Hardware encoders are tried first and failed or unavailable devices fall back to software encoders.
+- **Seekable previews (v0.4.40):** Every generated video receives one-second keyframes. MP4 outputs use fast-start metadata. AV1, VP9, HEVC, 10-bit, and other compatibility previews are cached as ordinary H.264/AAC files served with HTTP byte-range support, so browsers can pause and scrub reliably. Downloads remain the unchanged original codec/container.
 - **Containers:** Auto-selects per codec (WebM/MKV/MP4 for AV1/VP9; MP4/MKV for H.264/H.265).
 - **Animated images:** Animated AVIF (GPU AV1 or software) and Animated WebP (`libwebp_anim`). Looping, no audio.
 - **Bit depth & quality:** Auto-detects 8-bit vs 10-bit source precision; Auto codec forces 8-bit 4:2:0. CRF/CQ-based quality slider (default 20).
