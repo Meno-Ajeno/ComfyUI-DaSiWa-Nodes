@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import glob
 import json
 import os
 import re
@@ -52,14 +53,25 @@ def _log(message):
 
 
 def find_ffmpeg():
-    path_ffmpeg = shutil.which("ffmpeg")
-    if path_ffmpeg:
-        return path_ffmpeg
+    allow_system = os.environ.get("DASIWA_ALLOW_SYSTEM_FFMPEG", "").strip().lower()
+    if allow_system in {"1", "true", "yes", "on"}:
+        return shutil.which("ffmpeg")
+
     try:
         import imageio_ffmpeg
 
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except ImportError:
+        package_file = getattr(imageio_ffmpeg, "__file__", None)
+        if not package_file:
+            return None
+        package_root = os.path.realpath(os.path.dirname(package_file))
+        candidates = glob.glob(os.path.join(package_root, "binaries", "ffmpeg-*"))
+        candidates = [os.path.realpath(path) for path in candidates if os.path.isfile(path)]
+        candidates = [
+            path for path in candidates
+            if os.path.commonpath((path, package_root)) == package_root
+        ]
+        return candidates[0] if len(candidates) == 1 else None
+    except (ImportError, OSError, ValueError):
         return None
 
 

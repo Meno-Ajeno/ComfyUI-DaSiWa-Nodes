@@ -39,6 +39,41 @@ enhanced_video_combine = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(enhanced_video_combine)
 
 
+def test_find_ffmpeg_prefers_python_environment_binary(tmp_path, monkeypatch):
+    package_dir = tmp_path / "imageio_ffmpeg"
+    binary_dir = package_dir / "binaries"
+    binary_dir.mkdir(parents=True)
+    package_ffmpeg = binary_dir / "ffmpeg-test"
+    package_ffmpeg.write_bytes(b"binary")
+    monkeypatch.setitem(
+        sys.modules,
+        "imageio_ffmpeg",
+        types.SimpleNamespace(__file__=str(package_dir / "__init__.py")),
+    )
+    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/ffmpeg")
+    monkeypatch.setenv("IMAGEIO_FFMPEG_EXE", "/attacker/ffmpeg")
+    monkeypatch.delenv("DASIWA_ALLOW_SYSTEM_FFMPEG", raising=False)
+
+    assert enhanced_video_combine.find_ffmpeg() == str(package_ffmpeg.resolve())
+
+
+def test_find_ffmpeg_requires_opt_in_for_system_fallback(tmp_path, monkeypatch):
+    package_dir = tmp_path / "imageio_ffmpeg"
+    package_dir.mkdir()
+    monkeypatch.setitem(
+        sys.modules,
+        "imageio_ffmpeg",
+        types.SimpleNamespace(__file__=str(package_dir / "__init__.py")),
+    )
+    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/ffmpeg")
+    monkeypatch.delenv("DASIWA_ALLOW_SYSTEM_FFMPEG", raising=False)
+
+    assert enhanced_video_combine.find_ffmpeg() is None
+
+    monkeypatch.setenv("DASIWA_ALLOW_SYSTEM_FFMPEG", "1")
+    assert enhanced_video_combine.find_ffmpeg() == "/usr/bin/ffmpeg"
+
+
 def test_node_schema_and_registration():
     controls = enhanced_video_combine.DaSiWa_EnhancedVideoCombine.INPUT_TYPES()["required"]
     package_source = (Path(__file__).parents[1] / "__init__.py").read_text(encoding="utf-8")
