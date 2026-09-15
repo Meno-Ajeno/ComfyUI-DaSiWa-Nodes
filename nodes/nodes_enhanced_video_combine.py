@@ -64,10 +64,10 @@ def find_ffmpeg():
 
 
 def _preview_source_path(filename, subfolder, output_type):
-    """Resolve a ComfyUI asset without allowing traversal outside its asset root."""
-    if not filename or filename != os.path.basename(filename) or ".." in subfolder:
+    """Resolve an output asset without allowing traversal or alternate roots."""
+    if output_type != "output" or not filename or filename != os.path.basename(filename) or ".." in subfolder:
         return None
-    output_dir = folder_paths.get_directory_by_type(output_type)
+    output_dir = folder_paths.get_directory_by_type("output")
     if not output_dir:
         return None
     root = os.path.abspath(output_dir)

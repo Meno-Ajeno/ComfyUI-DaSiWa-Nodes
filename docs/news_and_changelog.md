@@ -6,7 +6,7 @@ This changelog covers the last two months: **2026-06-29 → 2026-09-15**. The fi
 
 ## News
 
-- **Registry security remediation (09-15):** LLM/VLM nodes now use already-installed local model folders or GGUF files only; runtime Hugging Face downloads, Hugging Face token reads, and custom remote model code are removed. The Ollama backend is fixed to the loopback API, so workflows cannot send the ComfyUI server to an arbitrary URL. The Registry audit utility and security-review document record the release status and remaining manually reviewed capabilities. Version bump to 0.4.38.
+- **Registry security remediation (09-15):** LLM/VLM nodes now use already-installed local model folders or GGUF files only; runtime Hugging Face downloads, Hugging Face token reads, and custom remote model code are removed. The Ollama backend is fixed to the loopback API, so workflows cannot send the ComfyUI server to an arbitrary URL. Enhanced Video Combine preview transcodes only files from the output root, never a caller-selected ComfyUI asset root. The Registry audit utility and security-review document record the release status and remaining manually reviewed capabilities. Version bump to 0.4.39.
 
 - **MiniMax H3 Director: reference-pack workflow and layout fixes (09-11):** Save/Load packs can append or overwrite reference files, prompts, or both after validating the saved mode, real target limits, and referenced-file availability. REF2VA now separates Image, Video, and Audio lanes, while V / A / V+A references retain their correct limits and linked audio placement. L2VA's closing-frame slot is locked, and the Guide reports swapped H3 VAEs before native execution. Prompt-mode toolbar controls wrap inside their node instead of overflowing. Version bump to 0.4.37.
 
@@ -33,6 +33,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.39 | 09-15 | Registry security remediation: local-only LLM models, output-only FFmpeg preview, loopback-only Ollama, audit tooling |
 | 0.4.38 | 09-15 | Registry security remediation: local-only LLM models, no remote model code, loopback-only Ollama, audit tooling | 
 | 0.4.37 | 09-11 | MiniMax H3 Director: save/load packs, split media lanes, L2VA lock, VAE validation, and responsive toolbar |
 | 0.4.36 | 09-10 | MiniMax H3 Director Guide: named REF2VA native-call inputs for Core-order compatibility |
@@ -126,7 +127,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### LLM / VLM Analyze
 
-- **09-15: Registry security remediation (0.4.38):** removed workflow-controlled Hugging Face repository downloads, Hugging Face token reads, and `trust_remote_code`; local model folders must be installed before a workflow runs. Ollama requests are fixed to `http://127.0.0.1:11434/api/chat`; the former arbitrary URL input is removed. `tools/audit_comfy_registry_status.py` redacts Registry status payloads and verifies the exact post-publication version becomes active.
+- **09-15: Registry security remediation (0.4.38–0.4.39):** removed workflow-controlled Hugging Face repository downloads, Hugging Face token reads, and `trust_remote_code`; local model folders must be installed before a workflow runs. Ollama requests are fixed to `http://127.0.0.1:11434/api/chat`; the former arbitrary URL input is removed. Enhanced Video Combine preview accepts only a real file under ComfyUI's output directory, rather than selecting a root from a request parameter. `tools/audit_comfy_registry_status.py` redacts Registry status payloads and verifies the exact post-publication version becomes active.
 - **07-30:** LLM cache and GGUF backends added (local GGUF via llama.cpp alongside Ollama and Hugging Face download).
 
 ### DaSiWa System Monitor

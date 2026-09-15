@@ -142,6 +142,25 @@ def test_node_schema_and_registration():
 
 
 
+def test_preview_source_path_accepts_only_output_assets(tmp_path, monkeypatch):
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    video = output_dir / "preview.mp4"
+    video.write_bytes(b"video")
+    calls = []
+
+    def directory_for_type(output_type):
+        calls.append(output_type)
+        return str(output_dir)
+
+    monkeypatch.setattr(enhanced_video_combine.folder_paths, "get_directory_by_type", directory_for_type, raising=False)
+
+    assert enhanced_video_combine._preview_source_path("preview.mp4", "", "output") == str(video)
+    assert enhanced_video_combine._preview_source_path("preview.mp4", "", "input") is None
+    assert enhanced_video_combine._preview_source_path("preview.mp4", "../", "output") is None
+    assert calls == ["output"]
+
+
 def test_auto_bit_depth_distinguishes_8_and_10_bit_quantization():
     eight_bit = torch.tensor([0, 64, 127, 255], dtype=torch.float32).reshape(1, 2, 2, 1) / 255
     ten_bit = torch.tensor([0, 256, 511, 1023], dtype=torch.float32).reshape(1, 2, 2, 1) / 1023
