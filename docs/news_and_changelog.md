@@ -6,6 +6,8 @@ This changelog covers the last two months: **2026-06-29 → 2026-09-15**. The fi
 
 ## News
 
+- **Enhanced Video Combine: PyAV-native encoding and seekable previews (09-15):** Video encoding, audio muxing, metadata, animated WebP/AVIF, and compatibility preview transcoding now run in-process through PyAV 18 without launching an FFmpeg executable. Hardware candidates retain the NVENC → QSV → AMF → VAAPI order and fall back to software after a real encode attempt fails. Every generated video receives one-second keyframes; MP4 uses fast-start metadata, while AV1, VP9, HEVC, 10-bit, and other compatibility previews use cached H.264/AAC files served with HTTP byte-range support for reliable pause and timeline scrubbing. Original downloads keep their selected codec and container. Version bump to 0.4.40.
+
 - **Registry security remediation (09-15):** LLM/VLM nodes now use already-installed local model folders or GGUF files only; runtime Hugging Face downloads, Hugging Face token reads, and custom remote model code are removed. The Ollama backend is fixed to the loopback API, so workflows cannot send the ComfyUI server to an arbitrary URL. Enhanced Video Combine preview transcodes only files from the output root, never a caller-selected ComfyUI asset root. The Registry audit utility and security-review document record the release status and remaining manually reviewed capabilities. Version bump to 0.4.39.
 
 - **MiniMax H3 Director: reference-pack workflow and layout fixes (09-11):** Save/Load packs can append or overwrite reference files, prompts, or both after validating the saved mode, real target limits, and referenced-file availability. REF2VA now separates Image, Video, and Audio lanes, while V / A / V+A references retain their correct limits and linked audio placement. L2VA's closing-frame slot is locked, and the Guide reports swapped H3 VAEs before native execution. Prompt-mode toolbar controls wrap inside their node instead of overflowing. Version bump to 0.4.37.
@@ -33,6 +35,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.40 | 09-15 | Enhanced Video Combine: PyAV 18 migration, hardware-to-software fallback, one-second keyframes, and seekable cached browser previews |
 | 0.4.39 | 09-15 | Registry security remediation: local-only LLM models, output-only FFmpeg preview, loopback-only Ollama, audit tooling |
 | 0.4.38 | 09-15 | Registry security remediation: local-only LLM models, no remote model code, loopback-only Ollama, audit tooling | 
 | 0.4.37 | 09-11 | MiniMax H3 Director: save/load packs, split media lanes, L2VA lock, VAE validation, and responsive toolbar |
@@ -111,6 +114,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### Enhanced Video Combine
 
+- **09-15:** **PyAV-native encoding and seekable previews (0.4.40):** all video/audio encoding, metadata, animated WebP/AVIF, and compatibility preview transcoding moved from external FFmpeg processes to PyAV 18. Hardware encoder candidates are runtime-tested and fall back through NVENC → QSV → AMF → VAAPI → software. Outputs receive explicit one-second keyframes; MP4 uses fast-start metadata. AV1, VP9, HEVC, 10-bit, and other compatibility previews are cached as H.264/AAC MP4 and served with byte-range support for reliable browser scrubbing, while downloads remain the untouched original codec/container.
 - **08-22 / 08-25:** preview checkboxes (Autoplay, Mute) persist across reloads (PR #30); permanent Mute checkbox persisted with node properties.
 - **08-21:** drifted combo/boolean widget values self-heal on load; audio_codec positional drift repair; MythicAlchemy v16 workflow with clean video-combine widgets.
 - **08-15:** fixed audio outputs overwriting each other (counter always reset to 1).
