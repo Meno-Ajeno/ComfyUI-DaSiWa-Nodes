@@ -310,7 +310,7 @@ The **DaSiWa LLM / VLM nodes** let you run local transformers chat or vision-lan
 - **Prompt Presets:** Custom system instructions, LTX-2.3/Wan2.2 video prompt enhancement, and image/video caption presets for mixed tags, tag-only, or natural language.
 - **Memory Modes:** Keep models cached for speed, or use full cleanup to unload DaSiWa and ComfyUI managed models before/after analysis so later image/video models recover VRAM/RAM.
 - **Frame Sampling:** Limit video analysis with max frames, stride, frame strategy, resize controls, context limits, and optional KV-cache reduction.
-- **Local, GGUF, Ollama, or HF Models:** Load full Transformers folders, local GGUF through llama.cpp, call Ollama, or download a Hugging Face repo id into `ComfyUI/models/llm`.
+- **Local, GGUF, or Loopback Ollama Models:** Load already-installed Transformers folders, local GGUF through llama.cpp, or call Ollama on `127.0.0.1`. Runtime model downloads, custom remote model code, and arbitrary Ollama URLs are disabled so a workflow cannot make the ComfyUI server fetch code or send requests to an attacker-chosen service.
 
 [Full documentation →](docs/llm_nodes.md)
 
