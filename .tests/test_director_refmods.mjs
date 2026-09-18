@@ -30,5 +30,8 @@ assert.match(source, /Math\.max\(0, Math\.min\(1,/, "typed strength is clamped t
 assert.match(source, /event\.key === "Tab"/, "modal traps keyboard focus");
 assert.match(source, /trigger\?\.focus\(\)/, "modal restores focus to its trigger");
 assert.match(source, /activeRefModOverlayCleanup\?\.\(\)/, "node cleanup closes any owned overlay");
+assert.match(source, /const slot = Math\.max\(0, Number\(row\.slot \|\| 1\) - 1\)/, "each selected RefMod maps its 1-based alias to its matching timeline slot");
+assert.match(source, /type, value: row\.name, slot, start: slot/, "RefMod timeline clips use their native lane type and fixed slot position");
+assert.match(source, /item\._audioEcho \|\| item\._isRefMod/, "RefMod timeline clips are read-only and cannot be dragged");
 assert.doesNotMatch(source, /ComfyUI-MiniMaxH3Mod/, "frontend has no upstream dependency");
 console.log("Director RefMod lazy submenu contract: PASS");
