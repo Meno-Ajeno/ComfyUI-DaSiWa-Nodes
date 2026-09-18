@@ -21,6 +21,8 @@ The Director's full change history now lives in the collection-wide [News & Chan
 
 Place standalone `.safetensors` RefMod files in `ComfyUI/models/refmods/` or any subfolder, for example `models/refmods/people/alice.safetensors`. The Director reads these files directly and has no runtime dependency on another custom-node pack. You may optionally install [ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod) to create RefMod files.
 
+**Credit:** The saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on the upstream work in [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod). This standalone DaSiWa implementation reads and writes the same file format, so RefMods created with either pack are interchangeable. Both packs can be installed side-by-side without conflict — they register different node names and categories, and both use ComfyUI's shared `models/refmods/` folder type via `folder_paths`.
+
 Each selected row stores its editable description in the workflow. That workflow description takes precedence over the description embedded in the file. RefMod aliases are inserted as `<RefMod N>` and translated to the native Picture, Video, or Audio numbering when queued.
 
 Version 0.4.41 supports standalone image, video, and audio RefMods only. Multi-member bundle files are intentionally rejected in this first version. Strength uses direct latent scaling (`latent * strength`), not the upstream pack's blur-mix behavior; use full strength if low-strength scaling does not suit a particular file.

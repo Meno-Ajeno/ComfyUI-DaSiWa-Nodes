@@ -6,6 +6,8 @@ This changelog covers the last two months: **2026-06-29 → 2026-09-18**. The fi
 
 ## News
 
+- **MiniMax H3 Director: RefMod timeline visualization + upstream credit (09-18):** Enabled RefMods now render as read-only clips in their appropriate reference lane (Image/Video/audio) with a green REFMOD badge, slot number, and strength indicator — users can see total reference count at a glance alongside uploaded media. Missing RefMod files now warn-and-skip instead of hard-erroring, preventing stale workflow saves from crashing generation. **Upstream credit:** the saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod); both packs can be installed side-by-side and share the same `models/refmods/` folder. Version bump to 0.4.43.
+
 - **MiniMax H3 Director: standalone RefMod references (09-18):** REF2VA gains a **REFMOD** button after **INPUT SCALING** that opens a separate explanatory overlay without expanding the node. The overlay lazily loads standalone image, video, and audio RefMod files under `models/refmods/`. Reading is self-contained with no upstream runtime dependency; workflow descriptions override file metadata, file changes invalidate ComfyUI caches, and unsafe paths or bundle files are rejected. Version bump to 0.4.41.
 
 - **Enhanced Video Combine: PyAV-native encoding and seekable previews (09-15):** Video encoding, audio muxing, metadata, animated WebP/AVIF, and compatibility preview transcoding now run in-process through PyAV 18 without launching an FFmpeg executable. Hardware candidates retain the NVENC → QSV → AMF → VAAPI order and fall back to software after a real encode attempt fails. Every generated video receives one-second keyframes; MP4 uses fast-start metadata, while AV1, VP9, HEVC, 10-bit, and other compatibility previews use cached H.264/AAC files served with HTTP byte-range support for reliable pause and timeline scrubbing. Original downloads keep their selected codec and container. Version bump to 0.4.40.
@@ -37,6 +39,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.43 | 09-18 | MiniMax H3 Director: RefMod timeline visualization, missing-file resilience, upstream credit to ComfyUI-MiniMaxH3Mod |
 | 0.4.42 | 09-18 | MiniMax H3 Director: RefMod preview translation, reference pack persistence, Insert RefMod # buttons |
 | 0.4.41 | 09-18 | MiniMax H3 Director: lazy standalone RefMod references with self-contained loading and cache invalidation |
 | 0.4.40 | 09-15 | Enhanced Video Combine: PyAV 18 migration, hardware-to-software fallback, one-second keyframes, and seekable cached browser previews |
@@ -72,6 +75,8 @@ Quick reference for the version bumps inside this window, newest first:
 ## Changelog
 
 ### MiniMax H3 Director (v1)
+
+- **09-18:** **RefMod timeline visualization + upstream credit (0.4.43):** Enabled RefMods now render as read-only clips in their appropriate reference lane with a green REFMOD badge, slot number, and strength indicator — total reference count visible at a glance alongside uploaded media. Missing RefMod files warn-and-skip instead of hard-erroring, so stale workflow saves don't crash generation. **Upstream credit:** the saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod); both packs can be installed side-by-side and share the same `models/refmods/` folder.
 
 - **09-18:** **Standalone RefMods (0.4.41):** REF2VA provides a **REFMOD** button after **INPUT SCALING**. Its separate overlay does not resize the node, loads metadata only when opened, and explains the reference selector, strength, enable switch, workflow description, and prompt tag. It selects standalone image/video/audio RefMods recursively from `models/refmods/`. Workflow row names/descriptions remain authoritative, native reference numbering includes video soundtracks, changed files invalidate cached execution, disabled empty rows are ignored, and path resolution rejects traversal and symlink escapes. Bundle files remain intentionally out of scope.
 - **09-18:** **RefMod preview translation & pack persistence (0.4.42):** Prompt Preview now resolves `<RefMod N>` tags to their native reference labels (`<Video 2>`, etc.) and appends a Reference descriptions block mapping each resolved tag to its description. Save/Load reference packs persist RefMod selections alongside media items — overwrite clears, append merges. The Clear button resets RefMod state. Insert RefMod # buttons added to all prompt builders (base, REF2VA, simple) for single-number insertion at cursor position.
