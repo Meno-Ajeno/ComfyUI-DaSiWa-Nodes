@@ -513,9 +513,38 @@ function install(node) {
     emit();
   }
 
+  function refModTranslatePreview(text) {
+    const counts = { image: 0, video: 0, audio: 0 };
+    for (const item of activeItems()) {
+      if (item.type === "image") counts.image++;
+      else if (item.type === "video" && item.media_mode !== "audio") counts.video++;
+      else if (item.type === "audio" || (item.type === "video" && item.media_mode === "audio")) counts.audio++;
+    }
+    const tags = {}, descriptions = [];
+    const rows = (state.refmods || []).filter(r => r.name && r.enabled !== false && Number(r.strength ?? 1) > 0).sort((a, b) => a.slot - b.slot);
+    for (const row of rows) {
+      const entry = refModLibrary.entries?.find(e => e.name === row.name);
+      if (!entry) throw new Error(`Refresh the RefMod library to preview ${row.name}.`);
+      counts[entry.kind]++;
+      const label = { image: "Picture", video: "Video", audio: "Audio" }[entry.kind];
+      const tag = `<${label} ${counts[entry.kind]}>`;
+      tags[row.slot] = tag;
+      if ((row.description || "").trim()) descriptions.push(`${tag}: ${row.description.trim()}`);
+    }
+    let result = text.replace(/<\s*refmod\s*_?\s*(\d+)(?:\s*:[^>]+)?\s*>/gi, (match, slot) => {
+      if (!tags[slot]) throw new Error(`${match} has no active reference.`);
+      return tags[slot];
+    });
+    if (descriptions.length) result += "\n\nReference descriptions:\n" + descriptions.join("\n");
+    return result;
+  }
+
   function showPromptPreview() {
     const m = mode();
-    const promptText = previewTextFor(m, hasExternalPrompt());
+    let promptText = previewTextFor(m, hasExternalPrompt());
+    if (m === "REF2VA" && !hasExternalPrompt()) {
+      try { promptText = refModTranslatePreview(promptText); } catch (error) { setStatus(error.message, true); return; }
+    }
     let overlay = document.createElement("div"); overlay.style.cssText = "position:fixed;inset:0;z-index:10002;display:flex;align-items:center;justify-content:center;background:rgba(8,10,14,.7);";
     overlay.onclick = event => { if (event.target === overlay) overlay.remove(); };
     const panel = document.createElement("div"); panel.style.cssText = "width:min(720px,90vw);max-height:85vh;display:flex;flex-direction:column;background:#111820;border:1px solid #40515e;border-radius:10px;overflow:hidden;box-shadow:0 8px 32px #000;";
@@ -907,7 +936,7 @@ function install(node) {
   }
   async function saveReferencePack(dataType) {
     const pack = { [REFERENCE_PACK_MARKER]: true, schema_version: 1, saved_at: new Date().toISOString(), model_mode: mode() };
-    if (dataType === "files" || dataType === "all") pack.items = buildPortableItems();
+    if (dataType === "files" || dataType === "all") { pack.items = buildPortableItems(); pack.refmods = state.refmods || []; }
     if (dataType === "prompt" || dataType === "all") pack.prompt = buildPortablePrompt();
     const text = JSON.stringify(pack, null, 2);
     const suggestedName = `minimax-h3-${dataType}-pack-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
@@ -973,7 +1002,8 @@ function install(node) {
     if (wantsPrompt) { if (loadMode === "overwrite") overwritePortablePrompt(pack.prompt); else appendPortablePrompt(pack.prompt); }
     let added = [];
     if (wantsFiles) {
-      if (loadMode === "overwrite") mutate(s => { s.items = s.items.filter(i => !["image", "video", "audio"].includes(i.type)); });
+      if (loadMode === "overwrite") mutate(s => { s.items = s.items.filter(i => !["image", "video", "audio"].includes(i.type)); s.refmods = []; });
+      else if (Array.isArray(pack.refmods)) mutate(s => { s.refmods = [...(s.refmods || []), ...pack.refmods]; });
       added = placeIncomingItems(incomingItems);
     }
     emit(); render();

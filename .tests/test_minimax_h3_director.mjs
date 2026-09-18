@@ -56,7 +56,7 @@ assert.match(source, /function buildSimpleForm\(panel\)/, "simple mode must rend
 assert.match(source, /createBuilderField\("Prompt", builderState\.simple_prompt/, "simple mode must bind the visible field to serialized simple_prompt state");
 assert.match(source, /if \(value === "simple"\) builderState\.simple_prompt = previewTextFor\(mode\(\), false\);/, "switching into simple mode must seed the single field from the current builder prompt");
 assert.match(source, /promptButton\.className = "ds-h3-prompt-mode-btn"/, "prompt-style choices must use the prompt-mode button styling");
-assert.match(source, /function showPromptPreview\(\) \{[\s\S]*?const promptText = previewTextFor\(m, hasExternalPrompt\(\)\);/, "the prompt preview must render the selected style");
+assert.match(source, /function showPromptPreview\(\) \{[\s\S]*?let promptText = previewTextFor\(m, hasExternalPrompt\(\)\);/, "the prompt preview must render the selected style");
 assert.match(source, /builderState\.prompt_mode = value/, "prompt-style buttons must set the explicitly selected mode");
 assert.match(source, /const resetBuilderState = \(\) => \{ builderState = DEFAULT_BUILDER_STATE\(mode\(\)\); builderState\.mode = mode\(\); \};/, "Clear must reset all serialized builder fields to the current mode defaults");
 assert.match(source, /const clearAll = \(\) => \{ selectedId = null; resetBuilderState\(\);/, "Clear must reset prompt/text fields as well as selected media");
