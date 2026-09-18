@@ -81,10 +81,12 @@ def test_refmod_validation_rejects_duplicate_bad_strength_missing_and_unknown(mo
     for rows, message in cases:
         with pytest.raises(ValueError, match=message):
             director.MiniMaxH3Director().build_guide("REF2VA", "", 64, 64, 1, "match", json.dumps({"refmods": rows}))
+    # Missing files are now warned-and-skipped (not hard errors) — validates the skip path works
     monkeypatch.setattr(director, "load_refmod", lambda name: (_ for _ in ()).throw(ValueError("not found")))
-    with pytest.raises(ValueError, match="RefMod 1.*missing.*not found"):
-        director.MiniMaxH3Director().build_guide("REF2VA", "", 64, 64, 1, "match",
-                                                 json.dumps({"refmods": [{"slot": 1, "name": "missing"}]}))
+    result = director.MiniMaxH3Director().build_guide("REF2VA", "", 64, 64, 1, "match",
+                                                     json.dumps({"refmods": [{"slot": 1, "name": "missing"}]}))
+    # No minimax_ref_items since the only refmod was skipped
+    assert "minimax_ref_items" not in result[0]
 
 
 def test_zero_refmods_preserves_legacy_guide_and_native_kwargs(monkeypatch):

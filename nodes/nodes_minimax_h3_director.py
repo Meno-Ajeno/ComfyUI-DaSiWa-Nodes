@@ -47,7 +47,8 @@ def _load_refmod_rows(rows):
         try:
             latent, meta = load_refmod(row["name"])
         except (OSError, ValueError, KeyError) as exc:
-            raise ValueError(f"RefMod {slot} '{row['name']}': {exc}") from exc
+            log_dasiwa("MiniMax H3 Director", f"RefMod {slot} '{row['name']}' skipped: {exc}")
+            continue
         loaded.append({**meta, "slot": slot, "name": row["name"],
                        "description": str(row.get("description", "")).strip(),
                        "strength": strength, "kind": meta["kind"], "latent": latent * strength})
