@@ -2,9 +2,11 @@
 
 Collection-wide news and change history for the DaSiWa Custom Nodes — one place to see what changed across every node. Per-node deep dives (UI guides, wiring, options) stay in their own docs, linked from the README.
 
-This changelog covers the last two months: **2026-06-29 → 2026-09-15**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
+This changelog covers the last two months: **2026-06-29 → 2026-09-18**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
 
 ## News
+
+- **MiniMax H3 Director: standalone RefMod references (09-18):** REF2VA gains a **REFMOD** button after **INPUT SCALING** that opens a separate explanatory overlay without expanding the node. The overlay lazily loads standalone image, video, and audio RefMod files under `models/refmods/`. Reading is self-contained with no upstream runtime dependency; workflow descriptions override file metadata, file changes invalidate ComfyUI caches, and unsafe paths or bundle files are rejected. Version bump to 0.4.41.
 
 - **Enhanced Video Combine: PyAV-native encoding and seekable previews (09-15):** Video encoding, audio muxing, metadata, animated WebP/AVIF, and compatibility preview transcoding now run in-process through PyAV 18 without launching an FFmpeg executable. Hardware candidates retain the NVENC → QSV → AMF → VAAPI order and fall back to software after a real encode attempt fails. Every generated video receives one-second keyframes; MP4 uses fast-start metadata, while AV1, VP9, HEVC, 10-bit, and other compatibility previews use cached H.264/AAC files served with HTTP byte-range support for reliable pause and timeline scrubbing. Original downloads keep their selected codec and container. Version bump to 0.4.40.
 
@@ -35,6 +37,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.41 | 09-18 | MiniMax H3 Director: lazy standalone RefMod references with self-contained loading and cache invalidation |
 | 0.4.40 | 09-15 | Enhanced Video Combine: PyAV 18 migration, hardware-to-software fallback, one-second keyframes, and seekable cached browser previews |
 | 0.4.39 | 09-15 | Registry security remediation: local-only LLM models, output-only FFmpeg preview, loopback-only Ollama, audit tooling |
 | 0.4.38 | 09-15 | Registry security remediation: local-only LLM models, no remote model code, loopback-only Ollama, audit tooling | 
@@ -69,6 +72,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### MiniMax H3 Director (v1)
 
+- **09-18:** **Standalone RefMods (0.4.41):** REF2VA provides a **REFMOD** button after **INPUT SCALING**. Its separate overlay does not resize the node, loads metadata only when opened, and explains the reference selector, strength, enable switch, workflow description, and prompt tag. It selects standalone image/video/audio RefMods recursively from `models/refmods/`. Workflow row names/descriptions remain authoritative, native reference numbering includes video soundtracks, changed files invalidate cached execution, disabled empty rows are ignored, and path resolution rejects traversal and symlink escapes. Bundle files remain intentionally out of scope.
 - **09-11:** **Reference packs, lanes, and compatibility (0.4.37):** Save/Load packs preserve reference-file and prompt data independently, support append or overwrite, validate the saved target mode and missing files before applying, and preserve relative placement on mode remaps. REF2VA now separates Image, Video, and Audio lanes; V / A / V+A sources reserve and label their correct reference slots. L2VA locks the decorative slot 0 and uses slot 1 for its closing frame; legacy saved L2VA closing-frame layouts remain accepted. The Guide detects swapped H3 video/audio VAEs before native execution, while the toolbar wraps inside the node at narrow widths.
 - **09-10:** **REF2VA native-call compatibility (0.4.36):** the Guide now binds every `MiniMaxH3ReferenceToVideo` input by name. The current Core prompt-before-VAE order was already correct; named binding preserves it and remains safe if Core reorders inputs later.
 - **08-28:** **Director 2.0 frozen:** the v2 fork is removed from the nodepack and preserved under `frozen/`; Image Inpaint is documented as a v1 feature.
