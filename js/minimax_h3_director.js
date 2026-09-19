@@ -310,7 +310,7 @@ function install(node) {
       count.textContent = `${rows.filter(row => row.enabled !== false && row.name).length} of 8 references enabled`; updateRefModActiveBadge();
       if (refModLibrary.loading) { content.append(help("Loading reference library", "Reading RefMod metadata from models/refmods and its subfolders…")); return; }
       if (refModLibrary.error) { content.append(help("Reference library unavailable", refModLibrary.error)); return; }
-      content.append(help("How this works", "1. Choose a saved reference. 2. Enable it and set its influence. 3. Click INSERT IN PROMPT to insert the actual tag at your cursor—for example, <RefMod 1>—where that person or concept should appear."));
+      content.append(help("How this works", "1. Choose a saved reference. 2. Enable it and set its influence. 3. Click INSERT IN PROMPT to insert the expanded native label at your cursor—for example, <Video 1>—where that person or concept should appear."));
       const add = document.createElement("button"); add.type = "button"; add.className = "ds-h3-refmod-add"; add.textContent = "+ Add reference"; add.disabled = rows.length >= 8;
       add.onclick = () => { const used = new Set(rows.map(row => row.slot)); const slot = Array.from({ length: 8 }, (_, index) => index + 1).find(value => !used.has(value)); if (slot) { rows.push({ slot, name: "", description: "", strength: 1, enabled: false }); emit(); redraw(); } };
       content.append(add);
@@ -320,7 +320,7 @@ function install(node) {
         const cardHead = document.createElement("div"); cardHead.className = "ds-h3-refmod-cardhead";
         const cardTitle = document.createElement("h3"); cardTitle.textContent = `Reference ${row.slot}`;
         const alias = document.createElement("code"); alias.textContent = `<RefMod ${row.slot}>`;
-        const insert = document.createElement("button"); insert.type = "button"; insert.className = "ds-h3-refmod-insert"; insert.textContent = "INSERT IN PROMPT"; insert.disabled = !row.name || row.enabled === false || Number(row.strength) === 0; insert.onpointerdown = event => event.preventDefault(); insert.onclick = () => { const promptField = refModPromptField || timeline.querySelector(".ds-h3-prompt-panel textarea:not(:disabled)"); if (promptField) { promptField.focus(); promptField.setRangeText(`<RefMod ${row.slot}>`, promptField.selectionStart, promptField.selectionEnd, "end"); promptField.dispatchEvent(new Event("input", { bubbles: true })); } };
+        const insert = document.createElement("button"); insert.type = "button"; insert.className = "ds-h3-refmod-insert"; insert.textContent = "INSERT IN PROMPT"; insert.disabled = !row.name || row.enabled === false || Number(row.strength) === 0; insert.onpointerdown = event => event.preventDefault(); insert.onclick = () => { const promptField = refModPromptField || timeline.querySelector(".ds-h3-prompt-panel textarea:not(:disabled)"); const expandedTag = refModTagMap().tags[row.slot]; if (promptField && expandedTag) { promptField.focus(); promptField.setRangeText(expandedTag, promptField.selectionStart, promptField.selectionEnd, "end"); promptField.dispatchEvent(new Event("input", { bubbles: true })); } };
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "ds-h3-refmod-remove"; remove.textContent = "Remove"; remove.onclick = () => { state.refmods = rows.filter(item => item !== row); emit(); redraw(); };
         cardHead.append(cardTitle, alias, insert, remove); card.append(cardHead);
         const grid = document.createElement("div"); grid.className = "ds-h3-refmod-grid";
@@ -513,7 +513,7 @@ function install(node) {
     emit();
   }
 
-  function refModTranslatePreview(text) {
+  function refModTagMap() {
     const counts = { image: 0, video: 0, audio: 0 };
     for (const item of activeItems()) {
       if (item.type === "image") counts.image++;
@@ -524,13 +524,20 @@ function install(node) {
     const rows = (state.refmods || []).filter(r => r.name && r.enabled !== false && Number(r.strength ?? 1) > 0).sort((a, b) => a.slot - b.slot);
     for (const row of rows) {
       const entry = refModLibrary.entries?.find(e => e.name === row.name);
-      if (!entry) continue; // skip entries not yet loaded in library — Python will also skip missing files
-      counts[entry.kind]++;
-      const label = { image: "Picture", video: "Video", audio: "Audio" }[entry.kind];
-      const tag = `<${label} ${counts[entry.kind]}>`;
+      if (!entry) continue;
+      const labels = (Array.isArray(entry.kinds) && entry.kinds.length ? entry.kinds : [entry.kind]).map(kind => {
+        counts[kind]++;
+        return `<${{ image: "Picture", video: "Video", audio: "Audio" }[kind]} ${counts[kind]}>`;
+      });
+      const tag = labels.join(" ");
       tags[row.slot] = tag;
       if ((row.description || "").trim()) descriptions.push(`${tag}: ${row.description.trim()}`);
     }
+    return { tags, descriptions };
+  }
+
+  function refModTranslatePreview(text) {
+    const { tags, descriptions } = refModTagMap();
     let result = text.replace(/<\s*refmod\s*_?\s*(\d+)(?:\s*:[^>]+)?\s*>/gi, (match, slot) => {
       if (!tags[slot]) return match; // leave unknown tags as-is instead of throwing
       return tags[slot];

@@ -3,7 +3,7 @@ import json
 import math
 import re
 
-from .helper_refmod_format import load_refmod, refmod_fingerprint
+from .helper_refmod_format import load_refmods, refmod_fingerprint
 
 from .helper_logging import log_dasiwa
 from .helper_minimax_h3_director import (
@@ -45,13 +45,14 @@ def _load_refmod_rows(rows):
         if strength == 0:
             continue
         try:
-            latent, meta = load_refmod(row["name"])
+            refs = load_refmods(row["name"])
         except (OSError, ValueError, KeyError) as exc:
             log_dasiwa("MiniMax H3 Director", f"RefMod {slot} '{row['name']}' skipped: {exc}")
             continue
-        loaded.append({**meta, "slot": slot, "name": row["name"],
-                       "description": str(row.get("description", "")).strip(),
-                       "strength": strength, "kind": meta["kind"], "latent": latent * strength})
+        for latent, meta in refs:
+            loaded.append({**meta, "slot": slot, "name": row["name"],
+                           "description": str(row.get("description", "")).strip(),
+                           "strength": strength, "kind": meta["kind"], "latent": latent * strength})
     return sorted(loaded, key=lambda item: item["slot"])
 
 
@@ -62,8 +63,8 @@ def _refmod_tag_map(loaded, ref_images, ref_videos, ref_video_audios, ref_audios
     for item in loaded:
         counts[item["kind"]] += 1
         label = {"image": "Picture", "video": "Video", "audio": "Audio"}[item["kind"]]
-        tags[item["slot"]] = f"<{label} {counts[item['kind']]}>"
-    return tags
+        tags.setdefault(item["slot"], []).append(f"<{label} {counts[item['kind']]}>")
+    return {slot: " ".join(labels) for slot, labels in tags.items()}
 
 
 def _translate_refmods(value, tags):

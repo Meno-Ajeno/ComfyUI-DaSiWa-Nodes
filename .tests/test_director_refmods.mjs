@@ -12,13 +12,18 @@ assert.doesNotMatch(source, /createElement\("details"\)/, "RefMods do not expand
 const scalingIndex = source.indexOf('addDropdown("INPUT SCALING"');
 const buttonIndex = source.indexOf('refModLabel.textContent = "REFMOD"');
 assert.ok(scalingIndex >= 0 && buttonIndex > scalingIndex, "REFMOD button is created after INPUT SCALING");
-assert.match(source, /1\. Choose a saved reference\. 2\. Enable it and set its influence\. 3\. Click INSERT IN PROMPT to insert the actual tag at your cursor—for example, <RefMod 1>—/, "overlay explains the three-step prompt-tag insertion workflow with a concrete tag example");
+assert.match(source, /1\. Choose a saved reference\. 2\. Enable it and set its influence\. 3\. Click INSERT IN PROMPT to insert the expanded native label at your cursor—for example, <Video 1>—/, "overlay explains the three-step expanded-label insertion workflow with a concrete example");
 assert.match(source, /Reference library/, "overlay explains the saved reference selector");
 assert.match(source, /Reference strength/, "overlay explains strength");
 assert.match(source, /Use reference/, "overlay explains the enabled toggle");
 assert.match(source, /Prompt description/, "overlay explains workflow-owned descriptions");
 assert.match(source, /grid-template-columns:140px minmax\(180px,1fr\) minmax\(220px,1\.25fr\)/, "every overlay field uses the same label/control/help columns");
+assert.match(source, /function refModTagMap\(\)/, "preview and insertion use one native-label resolver");
+assert.match(source, /const expandedTag = refModTagMap\(\)\.tags\[row\.slot\];/, "overlay resolves the selected RefMod before insertion");
+assert.match(source, /setRangeText\(expandedTag, promptField\.selectionStart, promptField\.selectionEnd, "end"\)/, "insert action writes the expanded native label rather than a RefMod alias");
+assert.match(source, /Array\.isArray\(entry\.kinds\)/, "bundle member kinds are expanded in prompt labels");
 assert.match(source, /cardHead\.append\(cardTitle, alias, insert, remove\)/, "insert action sits beside the RefMod alias");
+
 assert.doesNotMatch(source, /field\("Prompt tag"/, "insert is not rendered as a separate misaligned field row");
 assert.match(source, /\.ds-h3-refmod-field:has\(textarea\)\{[^}]*min-height:92px/, "description rows reserve enough height for their textarea");
 assert.match(source, /\.ds-h3-refmod-field textarea\{[^}]*height:72px/, "description fields keep a stable uncropped height");

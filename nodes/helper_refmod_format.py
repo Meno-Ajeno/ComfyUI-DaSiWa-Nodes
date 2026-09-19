@@ -5,7 +5,6 @@ from urllib.parse import unquote
 from typing import Dict, List, Optional, Tuple
 
 from safetensors import safe_open
-from safetensors.torch import load_file
 
 META_KEYS = ("refmod_meta", "audio_refmod_meta")
 SKIP_DIRS = {"graph_presets", ".git", "__pycache__"}
@@ -88,6 +87,19 @@ def read_refmod_meta(path_no_ext: str) -> Optional[Dict]:
     return None
 
 
+def _refmod_members(meta: Dict) -> List[Dict]:
+    if meta.get("kind") != "bundle":
+        return [meta] if meta.get("kind") in MOD_KINDS else []
+    members = meta.get("members")
+    if meta.get("_format_version") != 5 or not isinstance(members, list) or not 1 <= len(members) <= 256:
+        return []
+    return members if all(isinstance(member, dict) and member.get("kind") in MOD_KINDS for member in members) else []
+
+
+def _refmod_metadata_is_supported(meta: Optional[Dict]) -> bool:
+    return isinstance(meta, dict) and bool(_refmod_members(meta))
+
+
 def list_refmods() -> List[str]:
     names = []
     for root in refmods_roots():
@@ -97,8 +109,7 @@ def list_refmods() -> List[str]:
             filename = os.path.basename(path)
             if filename.startswith(".") or not filename.casefold().endswith(".safetensors"):
                 continue
-            meta = read_refmod_meta(path[:-len(".safetensors")])
-            if isinstance(meta, dict) and meta.get("kind") in MOD_KINDS:
+            if _refmod_metadata_is_supported(read_refmod_meta(path[:-len(".safetensors")])):
                 names.append(os.path.splitext(os.path.relpath(path, root))[0].replace(os.sep, "/"))
     return sorted(set(names))
 
@@ -135,14 +146,39 @@ def refmod_fingerprint(name: str) -> tuple[int, int]:
     return stat.st_mtime_ns, stat.st_size
 
 
-def load_refmod(name: str) -> Tuple["object", Dict]:
+def _validate_refmod_latent(latent, meta: Dict, label: str) -> None:
+    if meta["kind"] == "audio":
+        valid = getattr(latent, "ndim", 0) == 4 and tuple(latent.shape[:3]) == (1, 32, 2) and latent.shape[3] > 0
+    else:
+        valid = (getattr(latent, "ndim", 0) == 5 and tuple(latent.shape[:2]) == (1, 24) and
+                 all(size > 0 for size in latent.shape[2:]) and all(size % 2 == 0 for size in latent.shape[-2:]))
+        valid = valid and (meta["kind"] != "image" or latent.shape[2] == 1)
+    if not valid:
+        raise ValueError(f"Invalid tensor layout for RefMod {label}.")
+
+
+def load_refmods(name: str) -> List[Tuple["object", Dict]]:
     path = find_mod_path(name)
     meta = read_refmod_meta(path)
-    if not isinstance(meta, dict):
-        raise ValueError(f"{path}.safetensors has no RefMod metadata.")
-    if meta.get("kind") not in MOD_KINDS:
-        raise ValueError(f"RefMod '{name}' kind {meta.get('kind')!r} not usable here (bundles need the upstream pack).")
-    tensors = load_file(_safetensors_path(path), device="cpu")
-    if "latent" not in tensors:
-        raise ValueError(f"RefMod '{name}' has no 'latent' tensor.")
-    return tensors["latent"].clone(), meta
+    if not isinstance(meta, dict) or not _refmod_metadata_is_supported(meta):
+        raise ValueError(f"{path}.safetensors has no supported RefMod metadata.")
+    members = _refmod_members(meta)
+    tensors = []
+    with safe_open(_safetensors_path(path), framework="pt", device="cpu") as handle:
+        for index, member in enumerate(members):
+            key = f"ref_{index}" if meta["kind"] == "bundle" else "latent"
+            try:
+                latent = handle.get_tensor(key).clone()
+            except Exception as exc:
+                raise ValueError(f"RefMod '{name}' is missing tensor '{key}'.") from exc
+            if meta["kind"] == "bundle":
+                _validate_refmod_latent(latent, member, f"'{name}' member {index}")
+            tensors.append((latent, member))
+    return tensors
+
+
+def load_refmod(name: str) -> Tuple["object", Dict]:
+    refs = load_refmods(name)
+    if len(refs) != 1:
+        raise ValueError(f"RefMod '{name}' is a bundle; load all members instead.")
+    return refs[0]

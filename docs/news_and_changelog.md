@@ -6,6 +6,8 @@ This changelog covers the last two months: **2026-06-29 → 2026-09-19**. The fi
 
 ## News
 
+- **MiniMax H3 Director: upstream RefMod v5 bundles (09-19):** REF2VA now loads current standalone and bundled RefMods created by ComfyUI-MiniMaxH3Mod. Bundle members are expanded into their image, video, and audio references; one `<RefMod N>` alias resolves to every contained native label in member order. Version bump to 0.4.47.
+
 - **Enhanced Video Combine: `%seed%` output naming (09-19):** The optional `seed` input now expands `%seed%` in `filename_prefix`, so videos and selected frame exports can include the exact generation seed. Existing workflows remain unchanged when no seed is connected. Version bump to 0.4.45.
 
 - **MiniMax H3 Director: RefMod timeline visualization + upstream credit (09-18):** Enabled RefMods now render as read-only clips in their appropriate reference lane (Image/Video/audio) with a green REFMOD badge, slot number, and strength indicator — users can see total reference count at a glance alongside uploaded media. Missing RefMod files now warn-and-skip instead of hard-erroring, preventing stale workflow saves from crashing generation. **Upstream credit:** the saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod); both packs can be installed side-by-side and share the same `models/refmods/` folder. Version bump to 0.4.43.
@@ -41,6 +43,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.47 | 09-19 | MiniMax H3 Director: upstream RefMod v5 bundle loading |
 | 0.4.45 | 09-19 | Enhanced Video Combine: `%seed%` filename token via an optional seed input |
 | 0.4.43 | 09-18 | MiniMax H3 Director: RefMod timeline visualization, missing-file resilience, upstream credit to ComfyUI-MiniMaxH3Mod |
 | 0.4.42 | 09-18 | MiniMax H3 Director: RefMod preview translation, reference pack persistence, Insert RefMod # buttons |
@@ -78,6 +81,8 @@ Quick reference for the version bumps inside this window, newest first:
 ## Changelog
 
 ### MiniMax H3 Director (v1)
+
+- **09-19:** **Upstream RefMod v5 bundles (0.4.47):** The REF2VA overlay recognizes RefMod containers from ComfyUI-MiniMaxH3Mod as well as standalone image/video/audio files. It expands each `ref_N` member into its native reference; `<RefMod N>` resolves to all labels from that selected bundle in member order.
 
 - **09-18:** **RefMod timeline visualization + upstream credit (0.4.43):** Enabled RefMods now render as read-only clips in their appropriate reference lane with a green REFMOD badge, slot number, and strength indicator — total reference count visible at a glance alongside uploaded media. Missing RefMod files warn-and-skip instead of hard-erroring, so stale workflow saves don't crash generation. **Upstream credit:** the saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod); both packs can be installed side-by-side and share the same `models/refmods/` folder.
 

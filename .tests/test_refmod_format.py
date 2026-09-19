@@ -88,6 +88,32 @@ def test_refmod_discovery_and_loading_accept_case_insensitive_safetensors_extens
     assert refmods.load_refmod("People/Alice")[1]["kind"] == "image"
 
 
+def test_refmod_bundle_lists_and_expands_every_member(monkeypatch, tmp_path):
+    path = tmp_path / "slime_cat_full.safetensors"
+    members = [
+        {"name": "slime_visual", "kind": "video", "latent_t": 4, "latent_h": 4, "latent_w": 6},
+        {"name": "slime_voice", "kind": "audio", "latent_t": 5},
+    ]
+    save_file(
+        {"ref_0": torch.ones(1, 24, 4, 4, 6), "ref_1": torch.ones(1, 32, 2, 5)},
+        str(path),
+        metadata={"refmod_meta": json.dumps({"_format_version": 5, "kind": "bundle", "name": "slime_cat_full", "members": members})},
+    )
+    monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(tmp_path)])
+
+    assert refmods.list_refmods() == ["slime_cat_full"]
+    assert [(meta["kind"], latent.shape) for latent, meta in refmods.load_refmods("slime_cat_full")] == [
+        ("video", (1, 24, 4, 4, 6)),
+        ("audio", (1, 32, 2, 5)),
+    ]
+    monkeypatch.setattr(refmod_library, "refmods_roots", lambda: [str(tmp_path)])
+    monkeypatch.setattr(refmod_library, "list_refmods", refmods.list_refmods)
+    monkeypatch.setattr(refmod_library, "find_mod_path", refmods.find_mod_path)
+    monkeypatch.setattr(refmod_library, "read_refmod_meta", refmods.read_refmod_meta)
+    refmod_library._entries_cache.update(sig=None, entries=[])
+    assert refmod_library.library_entries()[0]["kinds"] == ["video", "audio"]
+
+
 @pytest.mark.parametrize("name", ["", "None", "/absolute", "../escape", "a/../b", "a//b", "..%2fescape"])
 def test_find_mod_path_rejects_unsafe_names(monkeypatch, tmp_path, name):
     monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(tmp_path)])
@@ -95,7 +121,7 @@ def test_find_mod_path_rejects_unsafe_names(monkeypatch, tmp_path, name):
         refmods.find_mod_path(name)
 
 
-def test_load_refmod_clones_and_rejects_bundle(monkeypatch, tmp_path):
+def test_load_refmod_clones_and_rejects_invalid_bundle(monkeypatch, tmp_path):
     _save(tmp_path / "person.safetensors")
     _save(tmp_path / "group.safetensors", kind="bundle")
     monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(tmp_path)])
@@ -103,7 +129,7 @@ def test_load_refmod_clones_and_rejects_bundle(monkeypatch, tmp_path):
     first.zero_()
     second, _ = refmods.load_refmod("person")
     assert meta["kind"] == "video" and torch.all(second == 1)
-    with pytest.raises(ValueError, match="bundles need the upstream pack"):
+    with pytest.raises(ValueError, match="no supported RefMod metadata"):
         refmods.load_refmod("group")
 
 
@@ -154,5 +180,5 @@ def test_library_entries_are_metadata_only_and_cached(monkeypatch, tmp_path):
     monkeypatch.setattr(refmod_library, "read_refmod_meta", refmods.read_refmod_meta)
     monkeypatch.setattr(refmod_library, "load_refmod", lambda *_: (_ for _ in ()).throw(AssertionError("tensor loaded")), raising=False)
     refmod_library._entries_cache.update(sig=None, entries=[])
-    assert refmod_library.library_entries() == [{"name": "person", "kind": "video", "concept": "person",
+    assert refmod_library.library_entries() == [{"name": "person", "kind": "video", "kinds": ["video"], "concept": "person",
         "description": "desc", "tokens": 12, "mtime": pytest.approx((tmp_path / "person.safetensors").stat().st_mtime)}]

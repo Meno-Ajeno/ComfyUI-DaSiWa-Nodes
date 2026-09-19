@@ -13,7 +13,7 @@ Timeline-based authoring for MiniMax H3 generation workflows. Separate Image/Vid
 ![MiniMax H3 Director](assets/DaSiWa-MiniMaxH3-Director.png)
 
 - 🎥 **Modes:** FL2VA (T2VA/I2VA/L2VA, 2 image slots), IMAGE INPAINT (1 image → single frame via 5-frame pass), REF2VA (9 img / 3 vid / 3 audio = 12 total; V/A/V+A switch per video)
-- 📸 **REFMOD references:** saved person RefMods from `models/refmods/` — overlay selector, strength scaling, workflow-local descriptions, `<RefMod N>` stable aliases resolved at runtime to native reference labels.
+- 📸 **REFMOD references:** saved image/video/audio RefMods and upstream v5 bundles from `models/refmods/` — overlay selector, strength scaling, workflow-local descriptions, `<RefMod N>` stable aliases resolved at runtime to native reference labels.
 - 🔀 **Reference handling:** drag-reorder between slots, external soundtracks per video, visual crop via draggable markers, incompatible media preserved on mode toggle
 - 📋 **Paste & upload:** lane selection + Ctrl+V paste into chosen lane, drag-and-drop from file manager, paste-replace onto selected tile
 - ✍️ **Prompt builders:** FL2VA/I2VA/L2VA guided fields; REF2VA six-section builder with Insert [Shot N], Insert RefMod #, Prefill Labels & Summary, Preview Prompt (shows resolved `<RefMod N>` → native labels + description block); Simple/Structured toggle persisted

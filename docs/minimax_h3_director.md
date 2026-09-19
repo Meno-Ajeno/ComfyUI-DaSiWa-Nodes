@@ -15,17 +15,17 @@ The Director's full change history now lives in the collection-wide [News & Chan
 - Separate Image, Video, and Audio lanes. Click a lane to select it; paste / drop compatible media there.
 - Per-video stream switch: choose Video only, Audio only, or Video+embedded-audio with identical trim ranges.
 - Standalone audio clips can be trimmed with left/right handles just like video.
-- REF2VA shows a **REFMOD** button directly after **INPUT SCALING**. It opens a separate overlay without changing the Director node's size. The overlay loads standalone saved references only when opened and explains every setting.
+- REF2VA shows a **REFMOD** button directly after **INPUT SCALING**. It opens a separate overlay without changing the Director node's size. The overlay loads saved standalone and v5 bundle references only when opened and explains every setting.
 
 ## RefMods in REF2VA
 
-Place standalone `.safetensors` RefMod files in `ComfyUI/models/refmods/` or any subfolder, for example `models/refmods/people/alice.safetensors`. The Director reads these files directly and has no runtime dependency on another custom-node pack. You may optionally install [ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod) to create RefMod files.
+Place `.safetensors` RefMod files in `ComfyUI/models/refmods/` or any subfolder, for example `models/refmods/people/alice.safetensors`. The Director reads standalone image, video, and audio files plus upstream v5 bundle files directly, with no runtime dependency on another custom-node pack. You may optionally install [ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod) to create RefMod files.
 
 **Credit:** The saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on the upstream work in [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod). This standalone DaSiWa implementation reads and writes the same file format, so RefMods created with either pack are interchangeable. Both packs can be installed side-by-side without conflict — they register different node names and categories, and both use ComfyUI's shared `models/refmods/` folder type via `folder_paths`.
 
-Each selected row stores its editable description in the workflow. That workflow description takes precedence over the description embedded in the file. RefMod aliases are inserted as `<RefMod N>` and translated to the native Picture, Video, or Audio numbering when queued.
+Each selected row stores its editable description in the workflow. That workflow description takes precedence over the description embedded in the file. The overlay's **INSERT IN PROMPT** button writes the expanded native Picture, Video, or Audio label at the cursor; `<RefMod N>` aliases remain supported in saved workflows and are translated when queued.
 
-Version 0.4.41 supports standalone image, video, and audio RefMods only. Multi-member bundle files are intentionally rejected in this first version. Strength uses direct latent scaling (`latent * strength`), not the upstream pack's blur-mix behavior; use full strength if low-strength scaling does not suit a particular file.
+Upstream v5 bundles are expanded into their image, video, and audio members. A single `<RefMod N>` tag resolves to every native reference label contained by that bundle, in member order. Strength uses direct latent scaling (`latent * strength`), not the upstream pack's blur-mix behavior; use full strength if low-strength scaling does not suit a particular file.
 - Video thumbnails: each uploaded video shows its first frame as a background preview behind the clip tile.
 - Simple / Structured prompt mode: toggle how builder fields assemble into the final prompt (persisted per workflow).
 - Frame rate: `frame_rate` input (0.1–240, default 24) sets the output FPS and is re-emitted as an output.

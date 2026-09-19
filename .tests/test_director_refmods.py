@@ -9,11 +9,11 @@ from nodes import nodes_minimax_h3_director_guide as guide_module
 
 def _loaded(name):
     kind = {"picture": "image", "voice": "audio"}.get(name, "video")
-    return torch.ones(1, 24, 2, 4, 4), {"kind": kind, "name": name, "latent_t": 2, "latent_h": 4, "latent_w": 4}
+    return [(torch.ones(1, 24, 2, 4, 4), {"kind": kind, "name": name, "latent_t": 2, "latent_h": 4, "latent_w": 4})]
 
 
 def test_refmods_stable_slots_translate_all_prompt_fields(monkeypatch):
-    monkeypatch.setattr(director, "load_refmod", _loaded)
+    monkeypatch.setattr(director, "load_refmods", _loaded)
     monkeypatch.setattr(director, "refmod_fingerprint", lambda _name: (123, 456))
     state = {"items": [{"type": "video", "value": "native", "slot": 0, "duration": 2}], "refmods": [
         {"slot": 3, "name": "person", "description": "desc <RefMod 3>", "strength": .5, "enabled": True},
@@ -35,9 +35,25 @@ def test_refmods_stable_slots_translate_all_prompt_fields(monkeypatch):
     assert "<RefMod 3>" not in json.dumps(guide["builder_state"])
 
 
+def test_refmod_bundle_expands_members_and_inserts_all_resolved_tags(monkeypatch):
+    monkeypatch.setattr(director, "load_refmods", lambda _name: [
+        (torch.ones(1, 24, 4, 4, 4), {"kind": "video", "name": "slime_visual", "latent_t": 4, "latent_h": 4, "latent_w": 4}),
+        (torch.ones(1, 32, 2, 5), {"kind": "audio", "name": "slime_audio", "latent_t": 5}),
+    ])
+    monkeypatch.setattr(director, "refmod_fingerprint", lambda _name: (7, 11))
+
+    guide = director.MiniMaxH3Director().build_guide(
+        "REF2VA", "<RefMod 1>", 64, 64, 1, "match",
+        json.dumps({"refmods": [{"slot": 1, "name": "slime_cat_full", "enabled": True}]}),
+    )[0]
+
+    assert [item["kind"] for item in guide["minimax_ref_items"]] == ["video", "audio"]
+    assert guide["resolved_prompt"].startswith("<Video 1> <Audio 1>")
+
+
 def test_row_name_and_description_override_file_metadata_for_stamp(monkeypatch):
-    monkeypatch.setattr(director, "load_refmod", lambda _name: (
-        torch.ones(1), {"kind": "video", "name": "file-name", "description": "file description"}))
+    monkeypatch.setattr(director, "load_refmods", lambda _name: [(
+        torch.ones(1), {"kind": "video", "name": "file-name", "description": "file description"})])
     stamped = []
     monkeypatch.setattr(director, "refmod_fingerprint", lambda name: stamped.append(name) or (7, 11))
     row = {"slot": 1, "name": "folder/selected", "description": "workflow description", "enabled": True}
@@ -50,7 +66,7 @@ def test_row_name_and_description_override_file_metadata_for_stamp(monkeypatch):
 
 
 def test_audio_alias_counts_video_soundtracks_and_standalone_audio(monkeypatch):
-    monkeypatch.setattr(director, "load_refmod", lambda _name: (torch.ones(1), {"kind": "audio"}))
+    monkeypatch.setattr(director, "load_refmods", lambda _name: [(torch.ones(1), {"kind": "audio"})])
     monkeypatch.setattr(director, "refmod_fingerprint", lambda _name: (1, 1))
     state = {"items": [
         {"type": "video", "value": "video", "audio": "soundtrack", "media_mode": "video", "slot": 0, "duration": 2},
@@ -71,7 +87,7 @@ def test_disabled_empty_refmod_row_is_ignored_but_enabled_empty_fails():
 
 
 def test_refmod_validation_rejects_duplicate_bad_strength_missing_and_unknown(monkeypatch):
-    monkeypatch.setattr(director, "load_refmod", _loaded)
+    monkeypatch.setattr(director, "load_refmods", _loaded)
     cases = [
         ([{"slot": 1, "name": "a"}, {"slot": 1, "name": "b"}], "unique"),
         ([{"slot": 9, "name": "a"}], "1 to 8"),
@@ -82,7 +98,7 @@ def test_refmod_validation_rejects_duplicate_bad_strength_missing_and_unknown(mo
         with pytest.raises(ValueError, match=message):
             director.MiniMaxH3Director().build_guide("REF2VA", "", 64, 64, 1, "match", json.dumps({"refmods": rows}))
     # Missing files are now warned-and-skipped (not hard errors) — validates the skip path works
-    monkeypatch.setattr(director, "load_refmod", lambda name: (_ for _ in ()).throw(ValueError("not found")))
+    monkeypatch.setattr(director, "load_refmods", lambda name: (_ for _ in ()).throw(ValueError("not found")))
     result = director.MiniMaxH3Director().build_guide("REF2VA", "", 64, 64, 1, "match",
                                                      json.dumps({"refmods": [{"slot": 1, "name": "missing"}]}))
     # No minimax_ref_items since the only refmod was skipped

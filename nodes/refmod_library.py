@@ -2,7 +2,7 @@
 import os
 
 from .helper_refmod_format import (
-    _safetensors_path, find_mod_path, iter_refmod_files, list_refmods, read_refmod_meta, refmods_roots,
+    _refmod_members, _safetensors_path, find_mod_path, iter_refmod_files, list_refmods, read_refmod_meta, refmods_roots,
 )
 
 _entries_cache = {"sig": None, "entries": []}
@@ -30,14 +30,19 @@ def library_entries():
         for name in list_refmods():
             path = find_mod_path(name)
             meta = read_refmod_meta(path) or {}
-            kind = meta.get("kind")
-            t = int(meta.get("latent_t", 0) or 0)
-            h = int(meta.get("latent_h", 0) or 0)
-            w = int(meta.get("latent_w", 0) or 0)
-            tokens = t * 2 if kind == "audio" else t * (h // 2) * (w // 2)
-            entries.append({"name": name, "kind": kind, "concept": meta.get("concept_type", "generic"),
-                            "description": meta.get("description", ""), "tokens": tokens or None,
-                            "mtime": os.path.getmtime(_safetensors_path(path))})
+            members = _refmod_members(meta)
+            if not members:
+                continue
+            kind = members[0]["kind"]
+            tokens = sum(
+                (int(member.get("latent_t", 0) or 0) * 2 if member["kind"] == "audio"
+                 else int(member.get("latent_t", 0) or 0) * (int(member.get("latent_h", 0) or 0) // 2) * (int(member.get("latent_w", 0) or 0) // 2))
+                for member in members
+            )
+            entries.append({"name": name, "kind": kind, "kinds": [member["kind"] for member in members],
+                            "concept": meta.get("concept_type", "generic"),
+                            "description": meta.get("description") or members[0].get("description", ""),
+                            "tokens": tokens or None, "mtime": os.path.getmtime(_safetensors_path(path))})
         _entries_cache.update(sig=signature, entries=entries)
     return _entries_cache["entries"]
 
