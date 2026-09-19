@@ -12,15 +12,17 @@ assert.doesNotMatch(source, /createElement\("details"\)/, "RefMods do not expand
 const scalingIndex = source.indexOf('addDropdown("INPUT SCALING"');
 const buttonIndex = source.indexOf('refModLabel.textContent = "REFMOD"');
 assert.ok(scalingIndex >= 0 && buttonIndex > scalingIndex, "REFMOD button is created after INPUT SCALING");
-assert.match(source, /1\. Choose a saved reference\. 2\. Enable it and set its influence\. 3\. Click INSERT IN PROMPT to insert the expanded native label at your cursor—for example, <Video 1>—/, "overlay explains the three-step expanded-label insertion workflow with a concrete example");
+assert.match(source, /1\. Choose a saved reference\. 2\. Enable it and set its influence\. 3\. Click INSERT IN PROMPT to insert its full expanded reference text—e\.g\. <Video 1>: digital animation, slime girl—/, "overlay explains the three-step full-reference-text insertion workflow with a concrete example");
 assert.match(source, /Reference library/, "overlay explains the saved reference selector");
 assert.match(source, /Reference strength/, "overlay explains strength");
 assert.match(source, /Use reference/, "overlay explains the enabled toggle");
 assert.match(source, /Prompt description/, "overlay explains workflow-owned descriptions");
 assert.match(source, /grid-template-columns:140px minmax\(180px,1fr\) minmax\(220px,1\.25fr\)/, "every overlay field uses the same label/control/help columns");
-assert.match(source, /function refModTagMap\(\)/, "preview and insertion use one native-label resolver");
-assert.match(source, /const expandedTag = refModTagMap\(\)\.tags\[row\.slot\];/, "overlay resolves the selected RefMod before insertion");
-assert.match(source, /setRangeText\(expandedTag, promptField\.selectionStart, promptField\.selectionEnd, "end"\)/, "insert action writes the expanded native label rather than a RefMod alias");
+assert.match(source, /function insertExpandedRefMod\(textarea, slot\)/, "all insertion entry points use one full-reference-text inserter");
+assert.match(source, /expansions\[row\.slot\] = description \? `\$\{tag\}: \$\{description\}` : tag/, "insertion expands a RefMod to its native label plus description");
+assert.match(source, /insertAtCursor\(textarea, expansion \+ " "\)/, "expanded reference text is inserted at the cursor");
+assert.match(source, /insertExpandedRefMod\(promptField, row\.slot\)/, "overlay insert button writes the full expanded reference text");
+assert.match(source, /insertExpandedRefMod\(target, n\)/, "REF2VA prompt-builder insert button writes the full expanded reference text");
 assert.match(source, /Array\.isArray\(entry\.kinds\)/, "bundle member kinds are expanded in prompt labels");
 assert.match(source, /cardHead\.append\(cardTitle, alias, insert, remove\)/, "insert action sits beside the RefMod alias");
 

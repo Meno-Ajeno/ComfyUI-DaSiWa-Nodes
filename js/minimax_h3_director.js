@@ -310,7 +310,7 @@ function install(node) {
       count.textContent = `${rows.filter(row => row.enabled !== false && row.name).length} of 8 references enabled`; updateRefModActiveBadge();
       if (refModLibrary.loading) { content.append(help("Loading reference library", "Reading RefMod metadata from models/refmods and its subfolders…")); return; }
       if (refModLibrary.error) { content.append(help("Reference library unavailable", refModLibrary.error)); return; }
-      content.append(help("How this works", "1. Choose a saved reference. 2. Enable it and set its influence. 3. Click INSERT IN PROMPT to insert the expanded native label at your cursor—for example, <Video 1>—where that person or concept should appear."));
+      content.append(help("How this works", "1. Choose a saved reference. 2. Enable it and set its influence. 3. Click INSERT IN PROMPT to insert its full expanded reference text—e.g. <Video 1>: digital animation, slime girl—at your cursor."));
       const add = document.createElement("button"); add.type = "button"; add.className = "ds-h3-refmod-add"; add.textContent = "+ Add reference"; add.disabled = rows.length >= 8;
       add.onclick = () => { const used = new Set(rows.map(row => row.slot)); const slot = Array.from({ length: 8 }, (_, index) => index + 1).find(value => !used.has(value)); if (slot) { rows.push({ slot, name: "", description: "", strength: 1, enabled: false }); emit(); redraw(); } };
       content.append(add);
@@ -320,7 +320,7 @@ function install(node) {
         const cardHead = document.createElement("div"); cardHead.className = "ds-h3-refmod-cardhead";
         const cardTitle = document.createElement("h3"); cardTitle.textContent = `Reference ${row.slot}`;
         const alias = document.createElement("code"); alias.textContent = `<RefMod ${row.slot}>`;
-        const insert = document.createElement("button"); insert.type = "button"; insert.className = "ds-h3-refmod-insert"; insert.textContent = "INSERT IN PROMPT"; insert.disabled = !row.name || row.enabled === false || Number(row.strength) === 0; insert.onpointerdown = event => event.preventDefault(); insert.onclick = () => { const promptField = refModPromptField || timeline.querySelector(".ds-h3-prompt-panel textarea:not(:disabled)"); const expandedTag = refModTagMap().tags[row.slot]; if (promptField && expandedTag) { promptField.focus(); promptField.setRangeText(expandedTag, promptField.selectionStart, promptField.selectionEnd, "end"); promptField.dispatchEvent(new Event("input", { bubbles: true })); } };
+        const insert = document.createElement("button"); insert.type = "button"; insert.className = "ds-h3-refmod-insert"; insert.textContent = "INSERT IN PROMPT"; insert.disabled = !row.name || row.enabled === false || Number(row.strength) === 0; insert.onpointerdown = event => event.preventDefault(); let insertTarget = null; insert.addEventListener("mousedown", () => { const active = document.activeElement; insertTarget = (active && active.tagName === "TEXTAREA" ? active : null); }); insert.onclick = () => { const promptField = insertTarget || refModPromptField || timeline.querySelector(".ds-h3-prompt-panel textarea:not(:disabled)"); insertExpandedRefMod(promptField, row.slot); };
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "ds-h3-refmod-remove"; remove.textContent = "Remove"; remove.onclick = () => { state.refmods = rows.filter(item => item !== row); emit(); redraw(); };
         cardHead.append(cardTitle, alias, insert, remove); card.append(cardHead);
         const grid = document.createElement("div"); grid.className = "ds-h3-refmod-grid";
@@ -427,7 +427,7 @@ function install(node) {
     allowNativeTextEditing(imdArea.querySelector("textarea"));
     const helpers = document.createElement("div"); helpers.className = "ds-h3-actions";
     const shotBtn = document.createElement("button"); shotBtn.textContent = "Insert [Shot N]"; shotBtn.onclick = () => { const n = window.prompt("Shot number:", "1"); if (n) insertAtCursor(imdArea.querySelector("textarea"), `[Shot ${n}] `); }; helpers.appendChild(shotBtn);
-    const refmodBtn = document.createElement("button"); refmodBtn.textContent = "Insert RefMod #"; refmodBtn.onclick = () => { const n = window.prompt("RefMod number:", "1"); if (n) insertAtCursor(imdArea.querySelector("textarea"), `<RefMod ${n}> `); }; helpers.appendChild(refmodBtn);
+    const refmodBtn = document.createElement("button"); refmodBtn.textContent = "Insert RefMod #"; let baseRefTarget = null; refmodBtn.addEventListener("mousedown", () => { const active = document.activeElement; baseRefTarget = (active && active.tagName === "TEXTAREA" ? active : null); }); refmodBtn.onclick = () => { const n = window.prompt("RefMod number:", "1"); if (n) insertExpandedRefMod(baseRefTarget || imdArea.querySelector("textarea"), n); }; helpers.appendChild(refmodBtn);
     panel.appendChild(helpers); panel.appendChild(imdArea);
     const soundscape = createBuilderField("overall_soundscape", builderState.soundscape, { rows: 3, placeholder: "Describe ambient sounds, dialogue, effects...", onChange: val => { builderState.soundscape = val; emit(); }, fieldKey: "soundscape" }, fieldHeights); allowNativeTextEditing(soundscape.querySelector("textarea")); panel.appendChild(soundscape);
     const music = createBuilderField("non_diegetic_music", builderState.music, { rows: 2, placeholder: 'N/A or describe background score...', onChange: val => { builderState.music = val; emit(); }, fieldKey: "music" }, fieldHeights); allowNativeTextEditing(music.querySelector("textarea")); panel.appendChild(music);
@@ -443,7 +443,7 @@ function install(node) {
     const simplePrompt = createBuilderField("Prompt", builderState.simple_prompt, { rows: 10, placeholder: "Write the complete MiniMax H3 prompt...", onChange: val => { builderState.simple_prompt = val; emit(); }, fieldKey: "simple_prompt" }, fieldHeights);
     allowNativeTextEditing(simplePrompt.querySelector("textarea"));
     shotBtn.onclick = () => { const n = window.prompt("Shot number:", "1"); if (n) insertAtCursor(simplePrompt.querySelector("textarea"), `[Shot ${n}] `); };
-    refmodBtn.onclick = () => { const n = window.prompt("RefMod number:", "1"); if (n) insertAtCursor(simplePrompt.querySelector("textarea"), `<RefMod ${n}> `); };
+    refmodBtn.textContent = "Insert RefMod #"; let simpleRefTarget = null; refmodBtn.addEventListener("mousedown", () => { const active = document.activeElement; simpleRefTarget = (active && active.tagName === "TEXTAREA" ? active : null); }); refmodBtn.onclick = () => { const n = window.prompt("RefMod number:", "1"); if (n) insertExpandedRefMod(simpleRefTarget || simplePrompt.querySelector("textarea"), n); };
     panel.appendChild(simplePrompt);
   }
 
@@ -453,7 +453,7 @@ function install(node) {
     const label = document.createElement("div"); label.className = "ds-h3-small"; label.textContent = "REF2VA prompt builder — write freely; headers are added automatically"; panel.appendChild(label);
     const helpers = document.createElement("div"); helpers.className = "ds-h3-actions";
     const shotBtn = document.createElement("button"); shotBtn.textContent = "Insert [Shot N]"; shotBtn.onclick = () => { const wrapper = panel.querySelector("[data-ref2va-target='detail']"); const ta = wrapper?.querySelector("textarea") ?? wrapper; const n = window.prompt("Shot number:", "1"); if (n && ta) insertAtCursor(ta, `[Shot ${n}] `); }; helpers.appendChild(shotBtn);
-    const refmodInsertBtn = document.createElement("button"); refmodInsertBtn.textContent = "Insert RefMod #"; refmodInsertBtn.title = "Insert a specific <RefMod N> tag at cursor position"; refmodInsertBtn.onclick = () => { const wrapper = panel.querySelector("[data-ref2va-target='detail']"); const ta = wrapper?.querySelector("textarea") ?? wrapper; if (!ta) return; const n = window.prompt("RefMod number:", "1"); if (n) insertAtCursor(ta, `<RefMod ${n}> `); }; helpers.appendChild(refmodInsertBtn);
+    const refmodInsertBtn = document.createElement("button"); refmodInsertBtn.textContent = "Insert RefMod #"; refmodInsertBtn.title = "Insert a selected RefMod's expanded native label and description at cursor position"; let refmodBuilderTarget = null; refmodInsertBtn.addEventListener("mousedown", () => { const active = document.activeElement; refmodBuilderTarget = (active && active.tagName === "TEXTAREA" ? active : null); }); refmodInsertBtn.onclick = () => { const target = refmodBuilderTarget || panel.querySelector("[data-ref2va-target='detail'] textarea") || panel.querySelector("[data-ref2va-target='detail']"); if (!target) return; const n = window.prompt("RefMod number:", "1"); if (n) insertExpandedRefMod(target, n); }; helpers.appendChild(refmodInsertBtn);
     const prefillBtn = document.createElement("button"); prefillBtn.textContent = "Prefill Labels & Summary"; prefillBtn.title = "Generate Subject/Picture/Video/Audio labels from inserted media and fill summary template"; prefillBtn.onclick = () => { generateRefLabelsAndSummary(panel); }; helpers.appendChild(prefillBtn);
     const previewBtn = document.createElement("button"); previewBtn.textContent = "Preview Prompt"; previewBtn.title = "Show the full prompt that will be sent upstream"; previewBtn.onclick = () => { showPromptPreview(); }; helpers.appendChild(previewBtn);
     panel.appendChild(helpers);
@@ -520,7 +520,7 @@ function install(node) {
       else if (item.type === "video" && item.media_mode !== "audio") counts.video++;
       else if (item.type === "audio" || (item.type === "video" && item.media_mode === "audio")) counts.audio++;
     }
-    const tags = {}, descriptions = [];
+    const tags = {}, expansions = {}, descriptions = [];
     const rows = (state.refmods || []).filter(r => r.name && r.enabled !== false && Number(r.strength ?? 1) > 0).sort((a, b) => a.slot - b.slot);
     for (const row of rows) {
       const entry = refModLibrary.entries?.find(e => e.name === row.name);
@@ -530,10 +530,18 @@ function install(node) {
         return `<${{ image: "Picture", video: "Video", audio: "Audio" }[kind]} ${counts[kind]}>`;
       });
       const tag = labels.join(" ");
+      const description = (row.description || "").trim();
       tags[row.slot] = tag;
-      if ((row.description || "").trim()) descriptions.push(`${tag}: ${row.description.trim()}`);
+      expansions[row.slot] = description ? `${tag}: ${description}` : tag;
+      if (description) descriptions.push(expansions[row.slot]);
     }
-    return { tags, descriptions };
+    return { tags, expansions, descriptions };
+  }
+
+  function insertExpandedRefMod(textarea, slot) {
+    const expansion = refModTagMap().expansions[Number(slot)];
+    if (!textarea || !expansion) { setStatus("Choose and enable that saved reference before inserting it.", true); return; }
+    insertAtCursor(textarea, expansion + " ");
   }
 
   function refModTranslatePreview(text) {
