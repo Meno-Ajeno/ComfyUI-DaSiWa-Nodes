@@ -97,14 +97,26 @@ def test_load_refmod_clones_and_rejects_bundle(monkeypatch, tmp_path):
         refmods.load_refmod("group")
 
 
-def test_find_mod_path_rejects_safetensors_symlink_escape(monkeypatch, tmp_path):
+def test_symlinked_refmods_are_discovered_and_loaded_without_looping(monkeypatch, tmp_path):
     root, outside = tmp_path / "root", tmp_path / "outside"
     root.mkdir(); outside.mkdir()
-    _save(outside / "escaped.safetensors")
-    (root / "person.safetensors").symlink_to(outside / "escaped.safetensors")
+    _save(outside / "person.safetensors")
+    _save(outside / "nested" / "voice.safetensors", kind="audio")
+    (root / "person.safetensors").symlink_to(outside / "person.safetensors")
+    (root / "linked").symlink_to(outside / "nested", target_is_directory=True)
+    (outside / "nested" / "back").symlink_to(root, target_is_directory=True)
     monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(root)])
-    with pytest.raises(ValueError, match="not found"):
-        refmods.find_mod_path("person")
+
+    assert refmods.list_refmods() == ["linked/voice", "person"]
+    assert refmods.find_mod_path("person") == str(root / "person")
+    assert refmods.load_refmod("linked/voice")[1]["kind"] == "audio"
+
+    monkeypatch.setattr(refmod_library, "refmods_roots", lambda: [str(root)])
+    monkeypatch.setattr(refmod_library, "list_refmods", refmods.list_refmods)
+    monkeypatch.setattr(refmod_library, "find_mod_path", refmods.find_mod_path)
+    monkeypatch.setattr(refmod_library, "read_refmod_meta", refmods.read_refmod_meta)
+    refmod_library._entries_cache.update(sig=None, entries=[])
+    assert [entry["name"] for entry in refmod_library.library_entries()] == ["linked/voice", "person"]
 
 
 def test_library_cache_invalidates_when_sidecar_changes(monkeypatch, tmp_path):

@@ -1,7 +1,9 @@
 """Metadata-only RefMod library route."""
 import os
 
-from .helper_refmod_format import find_mod_path, list_refmods, read_refmod_meta, refmods_roots
+from .helper_refmod_format import (
+    find_mod_path, iter_refmod_files, list_refmods, read_refmod_meta, refmods_roots,
+)
 
 _entries_cache = {"sig": None, "entries": []}
 
@@ -11,13 +13,12 @@ def _signature():
     for root in refmods_roots():
         files = []
         if os.path.isdir(root):
-            for directory, dirnames, filenames in os.walk(root):
-                dirnames[:] = [name for name in dirnames if name not in {"graph_presets", ".git", "__pycache__"}]
-                for filename in filenames:
-                    if not filename.endswith((".safetensors", ".json")):
-                        continue
-                    stat = os.stat(os.path.join(directory, filename))
-                    files.append((os.path.relpath(os.path.join(directory, filename), root), stat.st_mtime_ns, stat.st_size))
+            for path in iter_refmod_files(root):
+                filename = os.path.basename(path)
+                if not filename.endswith((".safetensors", ".json")):
+                    continue
+                stat = os.stat(path)
+                files.append((os.path.relpath(path, root), stat.st_mtime_ns, stat.st_size))
         parts.append((os.path.realpath(root), tuple(sorted(files))))
     return tuple(parts)
 

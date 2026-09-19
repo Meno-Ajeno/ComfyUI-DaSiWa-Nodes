@@ -34,11 +34,25 @@ def refmods_roots() -> List[str]:
     seen = set()
     for candidate in candidates:
         normalized = os.path.abspath(os.path.expanduser(candidate))
-        identity = os.path.realpath(normalized)
+        identity = os.path.normcase(os.path.realpath(normalized))
         if identity not in seen:
             seen.add(identity)
             roots.append(normalized)
     return roots
+
+
+def iter_refmod_files(root: str):
+    """Yield files below a configured RefMod root, following safe model links."""
+    seen_directories = set()
+    for directory, dirnames, filenames in os.walk(root, topdown=True, followlinks=True):
+        identity = os.path.normcase(os.path.realpath(directory))
+        if identity in seen_directories:
+            dirnames[:] = []
+            continue
+        seen_directories.add(identity)
+        dirnames[:] = sorted(name for name in dirnames if name not in SKIP_DIRS)
+        for filename in filenames:
+            yield os.path.join(directory, filename)
 
 
 def read_refmod_meta(path_no_ext: str) -> Optional[Dict]:
@@ -65,15 +79,13 @@ def list_refmods() -> List[str]:
     for root in refmods_roots():
         if not os.path.isdir(root):
             continue
-        for directory, dirnames, filenames in os.walk(root):
-            dirnames[:] = sorted(name for name in dirnames if name not in SKIP_DIRS)
-            for filename in filenames:
-                if filename.startswith(".") or not filename.endswith(".safetensors"):
-                    continue
-                path = os.path.join(directory, filename)
-                meta = read_refmod_meta(path[:-len(".safetensors")])
-                if isinstance(meta, dict) and meta.get("kind") in MOD_KINDS:
-                    names.append(os.path.splitext(os.path.relpath(path, root))[0].replace(os.sep, "/"))
+        for path in iter_refmod_files(root):
+            filename = os.path.basename(path)
+            if filename.startswith(".") or not filename.endswith(".safetensors"):
+                continue
+            meta = read_refmod_meta(path[:-len(".safetensors")])
+            if isinstance(meta, dict) and meta.get("kind") in MOD_KINDS:
+                names.append(os.path.splitext(os.path.relpath(path, root))[0].replace(os.sep, "/"))
     return sorted(set(names))
 
 
@@ -89,10 +101,10 @@ def _validate_name(name: str) -> list[str]:
 def find_mod_path(name: str) -> str:
     parts = _validate_name(name)
     for root in refmods_roots():
-        root_real = os.path.realpath(root)
-        target = os.path.realpath(os.path.join(root_real, *parts) + ".safetensors")
+        root_path = os.path.abspath(root)
+        target = os.path.abspath(os.path.join(root_path, *parts) + ".safetensors")
         try:
-            inside_root = os.path.commonpath((root_real, target)) == root_real
+            inside_root = os.path.commonpath((root_path, target)) == root_path
         except ValueError:
             inside_root = False
         if inside_root and os.path.isfile(target):
