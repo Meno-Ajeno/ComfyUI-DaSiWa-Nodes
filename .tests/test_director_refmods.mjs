@@ -12,6 +12,7 @@ assert.doesNotMatch(source, /createElement\("details"\)/, "RefMods do not expand
 const scalingIndex = source.indexOf('addDropdown("INPUT SCALING"');
 const buttonIndex = source.indexOf('refModLabel.textContent = "REFMOD"');
 assert.ok(scalingIndex >= 0 && buttonIndex > scalingIndex, "REFMOD button is created after INPUT SCALING");
+assert.match(source, /1\. Choose a saved reference\. 2\. Enable it and set its influence\. 3\. Click INSERT IN PROMPT to insert the actual tag at your cursor—for example, <RefMod 1>—/, "overlay explains the three-step prompt-tag insertion workflow with a concrete tag example");
 assert.match(source, /Reference library/, "overlay explains the saved reference selector");
 assert.match(source, /Reference strength/, "overlay explains strength");
 assert.match(source, /Use reference/, "overlay explains the enabled toggle");

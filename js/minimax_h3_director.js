@@ -310,7 +310,7 @@ function install(node) {
       count.textContent = `${rows.filter(row => row.enabled !== false && row.name).length} of 8 references enabled`; updateRefModActiveBadge();
       if (refModLibrary.loading) { content.append(help("Loading reference library", "Reading RefMod metadata from models/refmods and its subfolders…")); return; }
       if (refModLibrary.error) { content.append(help("Reference library unavailable", refModLibrary.error)); return; }
-      content.append(help("How this works", "Choose a saved reference, enable it, set its influence, then insert its stable prompt tag wherever that person or concept should appear."));
+      content.append(help("How this works", "1. Choose a saved reference. 2. Enable it and set its influence. 3. Click INSERT IN PROMPT to insert the actual tag at your cursor—for example, <RefMod 1>—where that person or concept should appear."));
       const add = document.createElement("button"); add.type = "button"; add.className = "ds-h3-refmod-add"; add.textContent = "+ Add reference"; add.disabled = rows.length >= 8;
       add.onclick = () => { const used = new Set(rows.map(row => row.slot)); const slot = Array.from({ length: 8 }, (_, index) => index + 1).find(value => !used.has(value)); if (slot) { rows.push({ slot, name: "", description: "", strength: 1, enabled: false }); emit(); redraw(); } };
       content.append(add);
