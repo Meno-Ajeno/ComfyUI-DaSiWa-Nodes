@@ -78,6 +78,16 @@ def test_read_metadata_header_audio_key_and_sidecar(monkeypatch, tmp_path):
     assert refmods.read_refmod_meta(str(tmp_path / "old"))["name"] == "old"
 
 
+def test_refmod_discovery_and_loading_accept_case_insensitive_safetensors_extensions(monkeypatch, tmp_path):
+    path = tmp_path / "People" / "Alice.SAFETENSORS"
+    _save(path, kind="image")
+    monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(tmp_path)])
+
+    assert refmods.list_refmods() == ["People/Alice"]
+    assert refmods.find_mod_path("People/Alice") == str(path)[:-len(".SAFETENSORS")]
+    assert refmods.load_refmod("People/Alice")[1]["kind"] == "image"
+
+
 @pytest.mark.parametrize("name", ["", "None", "/absolute", "../escape", "a/../b", "a//b", "..%2fescape"])
 def test_find_mod_path_rejects_unsafe_names(monkeypatch, tmp_path, name):
     monkeypatch.setattr(refmods, "refmods_roots", lambda: [str(tmp_path)])

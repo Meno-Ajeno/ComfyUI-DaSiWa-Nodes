@@ -55,9 +55,23 @@ def iter_refmod_files(root: str):
             yield os.path.join(directory, filename)
 
 
+def _safetensors_path(path_no_ext: str) -> str:
+    candidate = path_no_ext + ".safetensors"
+    if os.path.isfile(candidate):
+        return candidate
+    directory, stem = os.path.split(path_no_ext)
+    try:
+        for filename in os.listdir(directory or "."):
+            if filename.casefold() == f"{stem}.safetensors".casefold():
+                return os.path.join(directory, filename)
+    except OSError:
+        pass
+    return candidate
+
+
 def read_refmod_meta(path_no_ext: str) -> Optional[Dict]:
     try:
-        with safe_open(path_no_ext + ".safetensors", framework="pt") as handle:
+        with safe_open(_safetensors_path(path_no_ext), framework="pt") as handle:
             header = handle.metadata()
         for key in META_KEYS:
             if header and key in header:
@@ -81,7 +95,7 @@ def list_refmods() -> List[str]:
             continue
         for path in iter_refmod_files(root):
             filename = os.path.basename(path)
-            if filename.startswith(".") or not filename.endswith(".safetensors"):
+            if filename.startswith(".") or not filename.casefold().endswith(".safetensors"):
                 continue
             meta = read_refmod_meta(path[:-len(".safetensors")])
             if isinstance(meta, dict) and meta.get("kind") in MOD_KINDS:
@@ -102,22 +116,22 @@ def find_mod_path(name: str) -> str:
     parts = _validate_name(name)
     for root in refmods_roots():
         root_path = os.path.abspath(root)
-        target = os.path.abspath(os.path.join(root_path, *parts) + ".safetensors")
+        target = _safetensors_path(os.path.join(root_path, *parts))
         try:
             inside_root = os.path.commonpath((root_path, target)) == root_path
         except ValueError:
             inside_root = False
         if inside_root and os.path.isfile(target):
-            return target[:-len(".safetensors")]
+            return os.path.splitext(target)[0]
     raise ValueError(f"RefMod '{name}' not found in refmods folders.")
 
 
 def refmod_mtime(name: str) -> float:
-    return os.path.getmtime(find_mod_path(name) + ".safetensors")
+    return os.path.getmtime(_safetensors_path(find_mod_path(name)))
 
 
 def refmod_fingerprint(name: str) -> tuple[int, int]:
-    stat = os.stat(find_mod_path(name) + ".safetensors")
+    stat = os.stat(_safetensors_path(find_mod_path(name)))
     return stat.st_mtime_ns, stat.st_size
 
 
@@ -128,7 +142,7 @@ def load_refmod(name: str) -> Tuple["object", Dict]:
         raise ValueError(f"{path}.safetensors has no RefMod metadata.")
     if meta.get("kind") not in MOD_KINDS:
         raise ValueError(f"RefMod '{name}' kind {meta.get('kind')!r} not usable here (bundles need the upstream pack).")
-    tensors = load_file(path + ".safetensors", device="cpu")
+    tensors = load_file(_safetensors_path(path), device="cpu")
     if "latent" not in tensors:
         raise ValueError(f"RefMod '{name}' has no 'latent' tensor.")
     return tensors["latent"].clone(), meta
