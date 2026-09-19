@@ -2,9 +2,11 @@
 
 Collection-wide news and change history for the DaSiWa Custom Nodes — one place to see what changed across every node. Per-node deep dives (UI guides, wiring, options) stay in their own docs, linked from the README.
 
-This changelog covers the last two months: **2026-06-29 → 2026-09-18**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
+This changelog covers the last two months: **2026-06-29 → 2026-09-19**. The first commit in this window is from 2026-07-05; older history lives in the git log. All entries are listed **newest first**.
 
 ## News
+
+- **Enhanced Video Combine: `%seed%` output naming (09-19):** The optional `seed` input now expands `%seed%` in `filename_prefix`, so videos and selected frame exports can include the exact generation seed. Existing workflows remain unchanged when no seed is connected. Version bump to 0.4.45.
 
 - **MiniMax H3 Director: RefMod timeline visualization + upstream credit (09-18):** Enabled RefMods now render as read-only clips in their appropriate reference lane (Image/Video/audio) with a green REFMOD badge, slot number, and strength indicator — users can see total reference count at a glance alongside uploaded media. Missing RefMod files now warn-and-skip instead of hard-erroring, preventing stale workflow saves from crashing generation. **Upstream credit:** the saved person RefMod concept, `.safetensors` latent file format, and strength scaling design are based on [Luisacaotica/ComfyUI-MiniMaxH3Mod](https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod); both packs can be installed side-by-side and share the same `models/refmods/` folder. Version bump to 0.4.43.
 
@@ -39,6 +41,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 | Version | Date | Headline |
 |---|---|---|
+| 0.4.45 | 09-19 | Enhanced Video Combine: `%seed%` filename token via an optional seed input |
 | 0.4.43 | 09-18 | MiniMax H3 Director: RefMod timeline visualization, missing-file resilience, upstream credit to ComfyUI-MiniMaxH3Mod |
 | 0.4.42 | 09-18 | MiniMax H3 Director: RefMod preview translation, reference pack persistence, Insert RefMod # buttons |
 | 0.4.41 | 09-18 | MiniMax H3 Director: lazy standalone RefMod references with self-contained loading and cache invalidation |
@@ -125,6 +128,7 @@ Quick reference for the version bumps inside this window, newest first:
 
 ### Enhanced Video Combine
 
+- **09-19:** **`%seed%` output naming (0.4.45):** An optional `seed` input expands `%seed%` in `filename_prefix`, including the corresponding first/last-frame export names. Unconnected inputs preserve the literal token for existing workflows.
 - **09-15:** **PyAV-native encoding and seekable previews (0.4.40):** all video/audio encoding, metadata, animated WebP/AVIF, and compatibility preview transcoding moved from external FFmpeg processes to PyAV 18. Hardware encoder candidates are runtime-tested and fall back through NVENC → QSV → AMF → VAAPI → software. Outputs receive explicit one-second keyframes; MP4 uses fast-start metadata. AV1, VP9, HEVC, 10-bit, and other compatibility previews are cached as H.264/AAC MP4 and served with byte-range support for reliable browser scrubbing, while downloads remain the untouched original codec/container.
 - **08-22 / 08-25:** preview checkboxes (Autoplay, Mute) persist across reloads (PR #30); permanent Mute checkbox persisted with node properties.
 - **08-21:** drifted combo/boolean widget values self-heal on load; audio_codec positional drift repair; MythicAlchemy v16 workflow with clean video-combine widgets.

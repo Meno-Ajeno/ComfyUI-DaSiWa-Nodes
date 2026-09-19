@@ -182,6 +182,7 @@ Converts an `IMAGE` batch into a high-quality video with optional `AUDIO` muxing
 - **Frame exports:** Save first/last frame as PNG alongside the video; all assets published to ComfyUI Assets.
 - **Ping-pong mode:** Forward/reverse frame loop.
 - **Workflow metadata:** Embed prompt/workflow JSON where supported.
+- **Output naming (v0.4.45):** Connect a seed to the optional `seed` socket and use `%seed%` in `filename_prefix` (for example `video/%date:yyyy-MM-dd%/shot_%seed%`) to include the exact generation seed in the video and first/last-frame export names.
 - **Logging:** Compact CLI output with codec/container/encoder decisions and resolved audio settings. Built-in `?` help dialog.
 
 [Full documentation →](docs/enhanced_video_combine.md)

@@ -94,7 +94,7 @@ Many Chromium/Linux installations cannot decode H.265 in a canvas/video element 
 ## Metadata and filenames
 
 - `save_metadata` embeds ComfyUI prompt/workflow metadata where the selected container supports it.
-- `filename_prefix` supports ComfyUI date placeholders such as `%date%`, `%date:yyyy-MM-dd%`, and `%date:hhmmss%`.
+- `filename_prefix` supports `%seed%` when the optional `seed` input is connected, plus ComfyUI date placeholders such as `%date%`, `%date:yyyy-MM-dd%`, and `%date:hhmmss%`. For example, `video/%date:yyyy-MM-dd%/shot_%seed%` writes the generation seed into the output name. Without a connected seed, `%seed%` is left unchanged for workflow compatibility.
 - `save_output=false` writes under ComfyUI temporary output instead of the normal output directory.
 
 ## Console logging

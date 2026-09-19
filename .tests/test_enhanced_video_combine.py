@@ -69,7 +69,10 @@ def test_node_schema_and_registration():
     assert list(controls).index("audio_codec") == 13
     assert list(controls).index("audio_bitrate") == 14
     assert list(controls).index("save_first_frame") > list(controls).index("audio_bitrate")
-    assert enhanced_video_combine.DaSiWa_EnhancedVideoCombine.INPUT_TYPES()["optional"]["audio"][0] == "AUDIO"
+    optional = enhanced_video_combine.DaSiWa_EnhancedVideoCombine.INPUT_TYPES()["optional"]
+    assert optional["audio"][0] == "AUDIO"
+    assert optional["seed"][0] == "INT"
+    assert optional["seed"][1]["forceInput"] is True
     assert controls["codec"][0] == ["Auto", "AV1", "VP9", "H.265 (HEVC)", "H.264"]
     assert controls["container"][0] == ["Auto", "WebM", "MKV", "MP4", "Animated WebP", "Animated AVIF"]
     assert controls["quality"][1]["default"] == 20
@@ -390,8 +393,9 @@ def test_filename_prefix_expands_comfyui_date_format(monkeypatch):
     monkeypatch.setattr(enhanced_video_combine.datetime, "datetime", FixedDatetime)
 
     assert enhanced_video_combine._format_filename_prefix(
-        "video/%date:yyyy-MM-dd%/%date:hhmmss%"
-    ) == "video/2026-07-18/130405"
+        "video/%date:yyyy-MM-dd%/%date:hhmmss%_%seed%", seed=123456789
+    ) == "video/2026-07-18/130405_123456789"
+    assert enhanced_video_combine._format_filename_prefix("video_%seed%") == "video_%seed%"
 
 
 def test_audio_file_converts_comfyui_audio_to_planar_float32():
@@ -473,14 +477,14 @@ def test_output_and_selected_frame_exports_are_published_to_comfyui_assets(tmp_p
     images = torch.rand((2, 4, 6, 3), dtype=torch.float32)
 
     result = enhanced_video_combine.DaSiWa_EnhancedVideoCombine().combine(
-        images, 24.0, "H.264", "MP4", "8-bit", 20, False, False, "asset-video", True, False,
-        save_first_frame=True, save_last_frame=True,
+        images, 24.0, "H.264", "MP4", "8-bit", 20, False, False, "asset-video_%seed%", True, False,
+        save_first_frame=True, save_last_frame=True, seed=987654321,
     )
 
     assert result["ui"]["images"] == [
-        {"filename": "asset-video_00001.mp4", "subfolder": "", "type": "output", "format": "video/mp4", "width": 6, "height": 4, "codec": "H.264", "bit_depth": 8, "container": "MP4"},
-        {"filename": "asset-video_00001-first-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
-        {"filename": "asset-video_00001-last-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
+        {"filename": "asset-video_987654321_00001.mp4", "subfolder": "", "type": "output", "format": "video/mp4", "width": 6, "height": 4, "codec": "H.264", "bit_depth": 8, "container": "MP4"},
+        {"filename": "asset-video_987654321_00001-first-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
+        {"filename": "asset-video_987654321_00001-last-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
     ]
 
 
