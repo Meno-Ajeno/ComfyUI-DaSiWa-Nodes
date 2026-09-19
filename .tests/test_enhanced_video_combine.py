@@ -481,10 +481,14 @@ def test_output_and_selected_frame_exports_are_published_to_comfyui_assets(tmp_p
         save_first_frame=True, save_last_frame=True, seed=987654321,
     )
 
+    # The video itself is not PIL-openable and must not be published under "images" -
+    # /view would try to decode it as a still image and raise UnidentifiedImageError.
     assert result["ui"]["images"] == [
-        {"filename": "asset-video_987654321_00001.mp4", "subfolder": "", "type": "output", "format": "video/mp4", "width": 6, "height": 4, "codec": "H.264", "bit_depth": 8, "container": "MP4"},
         {"filename": "asset-video_987654321_00001-first-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
         {"filename": "asset-video_987654321_00001-last-frame.png", "subfolder": "", "type": "output", "format": "image/png", "width": 6, "height": 4},
+    ]
+    assert result["ui"]["gifs"] == [
+        {"filename": "asset-video_987654321_00001.mp4", "subfolder": "", "type": "output", "format": "video/mp4", "codec": "H.264", "bit_depth": 8, "container": "MP4", "width": 6, "height": 4, "fps": 24.0},
     ]
 
 

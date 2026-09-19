@@ -493,12 +493,14 @@ class DaSiWa_EnhancedVideoCombine:
         animated_settings = _animated_image_settings(selected_container)
         mime_types = {"WebM": "video/webm", "MKV": "video/x-matroska", "MP4": "video/mp4", **{name: settings[2] for name, settings in _ANIMATED_IMAGE_SETTINGS.items()}}
         output_mime_type = mime_types[selected_container]
-        assets = [{"filename": os.path.basename(output_path), "subfolder": subfolder, "type": output_type, "format": output_mime_type, "width": width, "height": height, "codec": selected_codec, "bit_depth": selected_bit_depth, "container": selected_container}]
-        assets.extend(
+        main_asset = {"filename": os.path.basename(output_path), "subfolder": subfolder, "type": output_type, "format": output_mime_type, "width": width, "height": height, "codec": selected_codec, "bit_depth": selected_bit_depth, "container": selected_container}
+        frame_assets = [
             {"filename": os.path.basename(path), "subfolder": subfolder, "type": output_type, "format": "image/png", "width": width, "height": height}
             for path in frame_exports
-        )
-        ui = {"images": assets}
+        ]
+        # Real video containers (WebM/MKV/MP4) aren't PIL-openable images: only animated
+        # image formats (GIF/WebP/AVIF) belong in "images", or /view 500s trying to decode them.
+        ui = {"images": ([main_asset] if animated_settings else []) + frame_assets}
         if not animated_settings:
             ui["gifs"] = [{"filename": os.path.basename(output_path), "subfolder": subfolder, "type": output_type, "format": output_mime_type, "codec": selected_codec, "bit_depth": selected_bit_depth, "container": selected_container, "width": width, "height": height, "fps": frame_rate}]
         _log(f"Output: {output_path} ({selected_codec}, {encoder}, {selected_bit_depth}-bit).")
