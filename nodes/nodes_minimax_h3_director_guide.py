@@ -160,8 +160,9 @@ class MiniMaxH3DirectorGuide:
                                     "latent_t": latent.shape[2], "latent_h": latent.shape[3], "latent_w": latent.shape[4],
                                     "ref_audio_t": 0, "audio_latent": None}
                 else:
+                    # Image refs are still 5D (B,C,T=1,H,W); skip the temporal dim.
                     native_block = {"kind": "image", "latent": latent,
-                                    "latent_h": latent.shape[2], "latent_w": latent.shape[3]}
+                                    "latent_h": latent.shape[3], "latent_w": latent.shape[4]}
                 native_blocks.append(native_block)
 
             class ReferenceClip:
